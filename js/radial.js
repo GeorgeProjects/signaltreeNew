@@ -44,7 +44,7 @@ var background_rect_record=[];
 var mem_last_used_rect_index = 0;
 var selectIdArray = [];
 var includeArray = [];
-var removeColor = "#d0d0d0";
+var removeColor = "#FFFFFF";
 var radialSvgName = "radial";
 var setOperationSvgName = "set-operation-svg";
 var setOperationNum = 2;
@@ -56,11 +56,11 @@ var MAXDEPTH = 5;
 var DURATION = 500;
 var SET_OPERATION_NUM = 2;
 var SET_OPERATION_GAP = 100;
-var LEVEL0_COLOR = 'black';//d3.rgb(8,81,156);
-var LEVEL1_COLOR = 'black';//d3.rgb(49,130,189);
-var LEVEL2_COLOR = 'black';//d3.rgb(107,174,214);
-var LEVEL3_COLOR = 'black';//d3.rgb(189,215,231);
-var LEVEL4_COLOR = 'black';//d3.rgb(230,243,255);
+var LEVEL0_COLOR = "#000000";//'black';//d3.rgb(8,81,156);
+var LEVEL1_COLOR = "#333333";//'black';//d3.rgb(49,130,189);
+var LEVEL2_COLOR = "#555555";//'black';//d3.rgb(107,174,214);
+var LEVEL3_COLOR = "#777777";//'black';//d3.rgb(189,215,231);
+var LEVEL4_COLOR = "#aaaaaa";//'black';//d3.rgb(230,243,255);
 var LEVEL_ARRAY = [LEVEL0_COLOR, LEVEL1_COLOR, LEVEL2_COLOR, LEVEL3_COLOR, LEVEL4_COLOR];
 //设置barcode的宽度和高度
 var widthArray = [20, 15, 10, 5, 2];
@@ -125,6 +125,7 @@ var radial = function(dataList){
 		  	});
 		svg.call(patternTip);
 		d3.selectAll(".triangle").remove();
+		d3.selectAll('.barcode-bg').remove();
 		var union_root={//用树结构存储公共树
 				//因为mark=0有特殊含义，所以输入的树的标号不能取0
 				mark:0,//mark为0表示这个结点至少在两棵树中出现，mark不为0时，用于标记这个结点出现过的那棵树
@@ -173,7 +174,6 @@ var radial = function(dataList){
 			addVirtualTreeValues(linearTreeArray[i]);
 			//根据处理得到的数据以及计算得到的坐标值进行实际的绘制
 		}
-
 		reorder_tree(union_root);
 		cal_repeat_time(union_root);
 		cal_nth_different_subtree_traverse(union_root);
@@ -275,9 +275,62 @@ var radial = function(dataList){
 				}
 			}
 			//repeattime决定网格的密度
-			function draw_diagnolgrid(svg_id,biasx,biasy,width,height,repeattime)
+			function draw_grid(svg_id,biasx,biasy,width,height,repeattime)
 			{
-				var cur_button_shape=	"M" + (sawToothW-sawToothWidth) + "," + rectHeight * 0.4 +
+				var line_num=0;
+				if (repeattime<=5)
+				{
+					console.log("draw_grid error");
+				}
+				else
+				{
+					if (reapttime<=20)
+						line_num=3;
+					else if (repeattime<=40)
+						line_num=5;
+					else if (repeattim<=80)
+						line_num=7;
+					else
+						line_num=9;
+				}
+
+					
+				svg = d3.select('#'+svg_id);
+				var group=svg.append("g")
+							.attr("transform",function(d,i){  
+									return "translate(" + (biasx) + "," + (biasy + rectY) + ")";  
+								})
+							.on("mouseover",function(d,i){
+								d3.selectAll('.grid')
+									.attr('fill','lightblue');
+							})
+							.on("click",function(d,i){
+							
+							})
+							.on("mouseout",function(){
+								d3.selectAll('.grid')
+									.attr('fill','white');
+							})
+
+				//外边框
+				var cur_button_shape=	"M" + (0) + "," + 0 +
+										"L" + (0) + ","+ width + 
+										"L" + (height) + ","+ width + 
+										"L" + (height) + ","+ 0;
+				group.append("path")	
+						.attr('class', 'grid')							 		
+						.attr("d",cur_button_shape)								 		
+						.attr("stroke","black")								 		
+						.attr("stroke-width",1)
+						.attr("fill",function(d,i){  						
+							return "white";  					
+						})
+
+				//左上到右下
+				for (var i=1;i<line_num;++i)
+				{		
+
+					var cur_button_shape=	"M" + (sawToothW-sawToothWidth) + "," + rectHeight * 0.4 +
 										"L" + (sawToothW * 0.8-sawToothWidth) + ","+ rectHeight * 0.4 + 
 										"L" + (sawToothW-sawToothWidth) + "," + rectHeight * 0.2 +
 										"L" + (sawToothW * 0.8-sawToothWidth) + ","+ rectHeight * 0.2 +
@@ -289,31 +342,33 @@ var radial = function(dataList){
 										"L" + (sawToothW * 0.8-sawToothWidth) + ","+ rectHeight * 0.8 +
 										"L" + (sawToothW-sawToothWidth) + ","+ rectHeight * 0.6 +
 										"L" + (sawToothW * 0.8-sawToothWidth) + ","+ rectHeight * 0.6
-				
-				svg = d3.select('#'+svg_id);
-				svg.append("path")	
-					.attr('class', 'diagnolgrid')							 		
-					.attr("d",cur_button_shape)								 		
-					.attr("stroke","black")								 		
-					.attr("stroke-width",1)
-					.attr("fill",function(d,i){  						
-						return "white";  					
-					})
-					.attr("transform",function(d,i){  
-						return "translate(" + (biasx) + "," + (biasy + rectY) + ")";  
-					})
-					.on("mouseover",function(d,i){
-						d3.selectAll('.diagnolgrid')
-							.attr('fill','lightblue');
-					})
-					.on("click",function(d,i){
+			
+
+					group.append("path")	
+						.attr('class', 'grid')							 		
+						.attr("d",cur_button_shape)								 		
+						.attr("stroke","black")								 		
+						.attr("stroke-width",1)
+						.attr("fill",function(d,i){  						
+							return "white";  					
+						})
 						
-					})
-					.on("mouseout",function(){
-						d3.selectAll('.diagnolgrid')
-						.attr('fill','white');
-					})
+				}
+				//右上到左下
+				for (var i=1;i<line_num;++i)
+				{				
+					group.append("path")	
+						.attr('class', 'grid')							 		
+						.attr("d",cur_button_shape)								 		
+						.attr("stroke","black")								 		
+						.attr("stroke-width",1)
+						.attr("fill",function(d,i){  						
+							return "white";  					
+						})
+						
+				}			
 			}
+
 			function draw_reduce_button(originButtonNodeArray){
 				document.getElementById('sort-button-div').innerHTML = "";
 				var buttonContainer = document.getElementById('sort-button-div');
@@ -488,7 +543,7 @@ var radial = function(dataList){
 								.attr('y',virtualBeginY)
 								.attr('width',virtualWidth)
 								.attr('height',virtualHeight)
-								.attr('fill','#a6611a');
+								.attr('fill','#e0e0e0');
 						}
 						//for(var j = 0;j < SET_OPERATION_NUM;j++){
 						if(svg_id == setOperationSvgName){
@@ -501,7 +556,7 @@ var radial = function(dataList){
 								.attr('y',virtualBeginY)
 								.attr('width',virtualWidth)
 								.attr('height',virtualHeight)
-								.attr('fill','#a6611a');
+								.attr('fill','#e0e0e0');
 						}
 						isNormal = true;
 					}
@@ -2301,7 +2356,7 @@ var radial = function(dataList){
 					return rectHeight;
 				})
 				.attr('fill',function(d,i){
-					return fillHandler(d,i,real_tree_index);
+					return fillHandler(d,i,real_tree_index,this);
 				})
 				.on('mouseover',function(d,i){
 					if(d3.select(this).attr("fill") == removeColor)//如果是虚拟结点，就不允许交互
@@ -2314,7 +2369,7 @@ var radial = function(dataList){
 					if(d3.select(this).attr("fill") == removeColor){
 						return;
 					}
-					mouseoutHandler(d, i);
+					mouseoutHandler(d,i,svg_id,cur_tree_index);
 				    if(d3.select(this).classed(radialSvgName)){
 				    	var treeId = dataList[barcoded_tree_rectbackground_index].id;
 				    	ObserverManager.post("percentage", [0 ,-1, treeId]);
@@ -2371,7 +2426,7 @@ var radial = function(dataList){
 					return rectHeight;
 				})
 				.attr('fill',function(d,i){
-					return fillHandler(d,i,real_tree_index);
+					return fillHandler(d,i,real_tree_index,this);
 				})
 				.on('mouseover',function(d,i){
 					if(d3.select(this).attr("fill") == removeColor)//虚拟结点不允许交互
@@ -2384,7 +2439,7 @@ var radial = function(dataList){
 					if(d3.select(this).attr("fill") == removeColor){
 						return;
 					}
-					mouseoutHandler(d,i,svg_id);
+					mouseoutHandler(d,i,svg_id,cur_tree_index);
 				    if(d3.select(this).classed(radialSvgName)){
 				    	var treeId = dataList[barcoded_tree_rectbackground_index].id;
 				   		ObserverManager.post("percentage", [0 ,-1, treeId]);
@@ -2477,7 +2532,7 @@ var radial = function(dataList){
 					return reduceNodeArray[i].height;
 				})
 				.attr('fill',function(d,i){
-					return fillHandler(d,i,real_tree_index);
+					return fillHandler(d,i,real_tree_index,this);
 				})
 				.on('mouseover',function(d,i){
 					if(d3.select(this).attr("fill") == removeColor){
@@ -2548,7 +2603,7 @@ var radial = function(dataList){
 					return reduceNodeArray[i].height;
 				})
 				.attr('fill',function(d,i){
-					return fillHandler(d,i,real_tree_index);
+					return fillHandler(d,i,real_tree_index,this);
 				})
 				.on('mouseover',function(d,i){
 					if(d3.select(this).attr("fill") == removeColor){
@@ -2655,7 +2710,7 @@ var radial = function(dataList){
 			* @function: fillHandler判断bar的颜色的函数(对于reduce模式与origin模式是相同的)
 			* @parameter: d,i,cur_tree_index d3原始的参数以及当前绘制的树的index值
 			*/
-			function fillHandler(d,i,cur_tree_index){
+			function fillHandler(d,i,cur_tree_index,this_element){
 				var depth = +d._depth;
 				if(judgeAnd){
 					// 对于虚拟节点
@@ -2667,11 +2722,13 @@ var radial = function(dataList){
 						if(hasAndValue(sendArray)){
 							return LEVEL_ARRAY[depth];
 						}
+						d3.select(this_element).classed('removenode',true);
 						return removeColor;
 					}
 					// 对于实际存在的节点
 					for(var j = 0;j < idArray.length;j++){
 						if(d.trees_values[idArray[j] + 1] == 'none'){
+							d3.select(this_element).classed('removenode',true);
 							return removeColor;
 						}
 					}
@@ -2686,6 +2743,7 @@ var radial = function(dataList){
 						if(hasOrValue(sendArray)){
 							return LEVEL_ARRAY[depth];
 						}
+						d3.select(this_element).classed('removenode',true);
 						return removeColor;
 					}
 					// 对于实际存在的节点
@@ -2694,14 +2752,17 @@ var radial = function(dataList){
 							return LEVEL_ARRAY[depth];
 						}
 					}
+					d3.select(this_element).classed('removenode',true);
 					return removeColor;
 				}else{
 					if(d.description == 'virtual' && d.trees_values[cur_tree_index + 1] != 0){
 						return LEVEL_ARRAY[depth];
 					}else if(d.description == 'virtual' && d.trees_values[cur_tree_index + 1] == 0){
+						d3.select(this_element).classed('removenode',true);
 						return removeColor;
 					}
 					if(d.trees_values[cur_tree_index + 1] == 'none'){
+						d3.select(this_element).classed('removenode',true);
 						return removeColor;
 					}else{
 						return LEVEL_ARRAY[depth];;
@@ -2902,17 +2963,17 @@ var radial = function(dataList){
 					var treeId = dataList[barcoded_tree_rectbackground_index].id;
 					var cur_tree_sumvalue=linear_tree[0].trees_values[cur_tree_index+1];
 					var cur_node_value=d.trees_values[cur_tree_index+1];
-
 					//发出当前的树节点的流量占当前的树的总流量的比例
 					ObserverManager.post("percentage",[cur_node_value/cur_tree_sumvalue, d._depth, treeId]);
 				}
 				radialTip.show(d);
 				var svg = d3.select("#" + svg_id);
+
 				var fatherIndex = -1;
 				var linkHeight = rectHeight/2;
 				var thisIndex = d.linear_index;
 				var bgRectInfo = background_rect_record[cur_tree_index];
-				if (document.getElementById("highlight_self").checked){
+				/*if (document.getElementById("highlight_self").checked){
 					var thisIndexNodes = d3.selectAll('.bar-id' + thisIndex)[0];
 					for(var j = 0;j < thisIndexNodes.length;j++){
 						var id = thisIndexNodes[j].id;
@@ -2920,7 +2981,10 @@ var radial = function(dataList){
 							d3.select("#" + id).classed('this-highlight',true);
 						}
 					}
-				}
+				}*/
+				//高亮从根节点到现在的节点的路径
+				svg.selectAll('.bar-class-' + cur_tree_index).classed('dim',true);
+				//高亮self节点
 				var thisWidth = +svg.select('#bar-id' + thisIndex + "rect_background_index-" + cur_tree_index + "-" + svg_id)
 						.attr("width");
 				var thisX = +svg.select('#bar-id' + thisIndex + "rect_background_index-" + cur_tree_index + "-" + svg_id)
@@ -2929,12 +2993,13 @@ var radial = function(dataList){
 						.attr("y");
 				var thisHeight = +svg.select('#bar-id' + thisIndex + "rect_background_index-" + cur_tree_index + "-" + svg_id)
 						.attr("height");
+				//highlight sibling
 				if(d._father!=undefined){
 					fatherIndex = d._father.linear_index;
 					father = d._father;
 					sibling_group=father.children;
-					if (document.getElementById("highlight_sibling").checked)
-					{
+					//if (document.getElementById("highlight_sibling").checked)
+					//{
 						if(sibling_group!=undefined){
 							for (var j=0;j<sibling_group.length;++j)
 							{
@@ -2944,7 +3009,7 @@ var radial = function(dataList){
 										.classed("sibiling-highlight",true);
 							}
 						}
-					}
+					//}
 				}
 				//hightlight cousin
 				if (document.getElementById("highlight_cousin").checked)
@@ -2958,7 +3023,7 @@ var radial = function(dataList){
 				}else{
 					fatherId = -1;
 				}
-				if (document.getElementById("highlight_father").checked && fatherId != -1)
+				/*if (document.getElementById("highlight_father").checked && fatherId != -1)
 				{
 					svg.select('#bar-id' + fatherId + "rect_background_index-" + cur_tree_index + "-" + svg_id)
 						.classed("father-highlight",true);
@@ -2993,12 +3058,12 @@ var radial = function(dataList){
 			    		.attr("transform", "translate(" + (fatherX + radius) + ", " + 
 			    					(fatherY + fatherHeight) + ")");
 					}
-				}
+				}*/
 				var children = [];
 				if(d.children!=undefined){
 					children = d.children;
 				}
-				if (document.getElementById("highlight_children").checked)
+				/*if(document.getElementById("highlight_children").checked)
 				{
 					for(var i = 0;i < children.length;i++){
 						var childId = children[i].linear_index;
@@ -3036,7 +3101,7 @@ var radial = function(dataList){
 							}
 						}
 					}		
-				}		
+				}	*/	
 			   if(d._father!=undefined){
 					svg.selectAll(".father-" + d._father.linear_index +
 								  "subtree-" + d.nth_different_subtree + 
@@ -3048,8 +3113,9 @@ var radial = function(dataList){
 			* @function: mouseoutHandler 鼠标hover离开的响应事件(origin模式)
 			* @parameter: d,i d3原始的参数
 			*/
-			function mouseoutHandler(d,i,svg_id){
+			function mouseoutHandler(d,i,svg_id,cur_tree_index){
 				radialTip.hide(d);
+				d3.selectAll('.bar-class-' + cur_tree_index).classed('dim',false);
 				var thisIndex = d.linear_index;
 				if (document.getElementById("highlight_self").checked){
 					d3.selectAll('.bar-id' + thisIndex).classed("this-highlight",true);
@@ -3099,6 +3165,7 @@ var radial = function(dataList){
 					ObserverManager.post("percentage",[cur_node_value/cur_tree_sumvalue, d._depth, treeId]);
 				}
 				var svg = d3.select("#" + svg_id);
+				svg.selectAll('.bar-class-' + cur_tree_index).classed('dim',true);
 				radialTip.show(d);
 				var fatherIndex = -1;
 				var thisIndex = d.linear_index;
@@ -3268,6 +3335,7 @@ var radial = function(dataList){
 			*/
 			function mouseoutReduceHandler(d,i,svg_id,cur_tree_index){
 				radialTip.hide(d);
+				d3.selectAll('.bar-class-' + cur_tree_index).classed('dim',false);
 				var thisIndex = d.linear_index;
 				if (document.getElementById("highlight_self").checked){
 					d3.selectAll('.bar-id' + thisIndex).classed("this-highlight",true);

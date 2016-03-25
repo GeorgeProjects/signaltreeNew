@@ -180,4 +180,20 @@
 }
 
 /*end of change*/
+.barcode-bg{
+  fill:"#cccccc";
+  /*
+  border-style:solid;
+  border-width:1px;
+  border-color:black;
+  */
+  /*stroke:black;
+  stroke-width:0px;*/
+}
+
+
+.removenode{
+  stroke:black;
+  stroke-width:0.08px;
+}
 

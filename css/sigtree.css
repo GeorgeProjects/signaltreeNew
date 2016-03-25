@@ -301,3 +301,6 @@ path[class~=focus-highlight], circle[class~=focus-highlight], rect[class~=focus-
   display: inline-block;
   vertical-align: middle;
 }
+.dim{
+  opacity: 0.1;
+}
