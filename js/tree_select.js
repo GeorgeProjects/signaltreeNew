@@ -567,8 +567,9 @@ var treeSelect = function(){
 			}
 			compareArray[1] = compareNum;
 		}
-		//更新右上角的数据描述
-		function update_inner_top_right_description(compareNum)
+	}
+	//更新右上角的数据描述
+	function update_inner_top_right_description(compareNum)
 		{
 			$("#innerTopRight #label-A .date_description").html(function() {
 				if (compareArray.length > 0) 
@@ -613,7 +614,6 @@ var treeSelect = function(){
 				});
 			}
 		}
-	}
 	/*
 	* @function: hover barcode 的对应层级，对于tree select部分的rect进行高亮该层级的节点的对应部分
 	* @parameter: percentage-高亮的rect的比例大小 bg_index-高亮的节点的index值
@@ -649,6 +649,11 @@ var treeSelect = function(){
 	}
 	SelectTree.OMListen = function(message, data) {
 	    if (message == "percentage") {
+
+	    	update_inner_top_right_description(data[2]);
+	    	d3.selectAll('.bar').classed("click-highlight",false);
+			d3.selectAll("#"+"his-"+data[2]).classed("click-highlight", true);
+
 	    	if (datadimMode=="flowsize")
 	    	{
 	    		//发送一个百分比data以后，在当前显示的数据A上画出柱子

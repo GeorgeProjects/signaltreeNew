@@ -92,6 +92,9 @@
   left: 0;
 }
 /*end of 提示框css*/
+  rect[class~=cousin-highlight]{
+    fill:purple;
+  }
   rect[class~=sibiling-highlight]{
     fill:lightblue;
   }
@@ -116,31 +119,33 @@
   path[class~=father-highlight]{
     stroke:brown;
   }
-  rect[class~=slider-hover-0]{
-    fill:#b3e2cd;
-    stroke: #b3e2cd;
+  rect[class~=slider-hover-0],rect[class~=slider-hover-1],
+  rect[class~=slider-hover-2],rect[class~=slider-hover-3],rect[class~=slider-hover-4]{
+    fill:rgb(166,97,26);
+    stroke:rgb(166,97,26);
     stroke-width:1.5px;
   }
-  rect[class~=slider-hover-1]{
+ /* {
     fill:#fdcdac;
     stroke: #fdcdac;
     stroke-width:1.5px;
   }
-  rect[class~=slider-hover-2]{
+  {
     fill:#cbd5e8;
     stroke: #cbd5e8;
     stroke-width:1.5px;
   }
-  rect[class~=slider-hover-3]{
+  {
     fill:#f4cae4;
     stroke: #f4cae4;
     stroke-width:1.5px;
   }
-  rect[class~=slider-hover-4]{
+  {
     fill:#e6f5c9;
     stroke: #e6f5c9;
     stroke-width:1.5px;
   }
+  */
   rect[class~=slider-hover-height]{
     fill:black;
     stroke:black;
@@ -154,23 +159,10 @@
   }
   .slider{
   }
-  rect[class~=hover-depth-0]{
-    fill:#b3e2cd;
+  rect[class~=hover-depth-0],rect[class~=hover-depth-1],
+  rect[class~=hover-depth-2],rect[class~=hover-depth-3],rect[class~=hover-depth-4]{
+    fill:rgb(166,97,26);
   }
-  rect[class~=hover-depth-1]{
-    fill:#fdcdac;
-  }
-  rect[class~=hover-depth-2]{
-    fill:#cbd5e8;
-  }
-  rect[class~=hover-depth-3]{
-    fill:#f4cae4;
-  }
-  rect[class~=hover-depth-4]{
-    fill:#e6f5c9;
-  }
-
-
 /*
 #triangle {
     width: 0;
@@ -178,7 +170,7 @@
 
     border-left: 8px solid transparent;
     border-right: 8px solid transparent;
-    border-bottom: 16px solid red;
+    border-bottom: 16px solid ;
 }  
 */
 

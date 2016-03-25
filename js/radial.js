@@ -51,17 +51,34 @@ var setOperationNum = 2;
 var beginRadians = Math.PI/2, endRadians = Math.PI * 3/2, points = 50;
 var angle = d3.scale.linear().domain([0, points-1]).range([beginRadians, endRadians]);
 var ISJUDGEAND = true, ISJUDGEOR = true, NOTJUDGEAND = false, NOTJUDGEOR = false, ISRESORT = true, NOTRESORT = false;
+var MINDEPTH = 0;
 var MAXDEPTH = 5;
+var DURATION = 500;
+var SET_OPERATION_NUM = 2;
+var SET_OPERATION_GAP = 100;
+var LEVEL0_COLOR = 'black';//d3.rgb(8,81,156);
+var LEVEL1_COLOR = 'black';//d3.rgb(49,130,189);
+var LEVEL2_COLOR = 'black';//d3.rgb(107,174,214);
+var LEVEL3_COLOR = 'black';//d3.rgb(189,215,231);
+var LEVEL4_COLOR = 'black';//d3.rgb(230,243,255);
+var LEVEL_ARRAY = [LEVEL0_COLOR, LEVEL1_COLOR, LEVEL2_COLOR, LEVEL3_COLOR, LEVEL4_COLOR];
+//设置barcode的宽度和高度
+var widthArray = [20, 15, 10, 5, 2];
+var rectAllHeight = 50;
+var originRectHeight = rectAllHeight / 7 * 6;
+var rectHeight = rectAllHeight / 7 * 6;
+var verticalInterval = rectAllHeight / 7;
+var slideHeight = originRectHeight;
+//var colorCompute = d3.interpolate(MAX_COLOR, MIN_COLOR);
+//var colorLinear = d3.scale.linear()
+//					.domain([MINDEPTH, MAXDEPTH])
+//					.range([0,1]);
+
 //画每个barcode背后的rect
 //同时初始化记录这些rect的信息的background_rect_record
 //barcode的tip
 var radial = function(dataList){
-		console.log(dataList);
 		var barcodeNum = dataList.length;
-		var rectAllHeight = 50;
-		var originRectHeight = rectAllHeight / 7 * 6;
-		var rectHeight = rectAllHeight / 7 * 6;
-		var verticalInterval = rectAllHeight / 7;
 		var rectY = 1;
 		var originIndexX = 10;
 		var indexWidth = 20;
@@ -69,8 +86,7 @@ var radial = function(dataList){
 		var originXCompute = originIndexX + indexWidth + indexBiasyX;
 		var sawToothX = 20;
 		var sawToothWidth = sawToothX;
-		var maxBarNum = Math.floor((height - rectY * 2)/(rectHeight + verticalInterval));
-		var widthArray = [20, 15, 10, 5, 2];
+		var maxBarNum = Math.floor((height - rectY * 2)/(slideHeight + verticalInterval));
 		var linearTreeArray = [];
 		var unionLinearTree = [];
 		var GlobalTreeDesArray = [];
@@ -91,9 +107,12 @@ var radial = function(dataList){
 		  	.attr('class', 'd3-tip')
 		 	.offset([-10, 0])
 		  	.html(function(d) {
-		    	return "Name:<span style='color:red'>" + d.name +"</span>" +
-		    		 "Description:<span style='color:red'>" + d.description + "</span>" +
-		    		 "Index:<span style='color:red'>" + d.linear_index + "</span>";
+		    	return 	"Name:<span style='color:red'>" + d.name +"</span>" +
+		    			"Value:<span style='color:red'>" + /*d3.format(".3s")(d.trees_values[...]) +*/ "bytes" +"</span>" +
+		    			"Depth:<span style='color:red'>" + d._depth + "</span>" +
+		    		 	"Index:<span style='color:red'>" + d.linear_index + "</span>" +
+		    		 	"Same pattern number:<span style='color:red'>" + d.maximum_continuous_repeat_group_size + "</span>"
+		    		 	;
 		  	});
 		svg.call(radialTip);
 		var patternTip = d3.tip()
@@ -136,25 +155,25 @@ var radial = function(dataList){
 				_father: undefined
 			};
 			//var curtreeindex = 1;
-			var curtreeindex = 1+i;
+			var curtreeindex = 1 + i;
 			merge_preprocess_rawdata(dataset.dataList,target_root,curtreeindex,1);
 			merge_preprocess_rawdata(dataset.dataList,union_root,curtreeindex,dataList.length);
-
 			if (i==dataList.length-1)
 			{
 				if (union_root.trees_values.length!=curtreeindex+1)
 					console.log("1error!!")
 			}
-			
-			//reorder_tree(target_root);
-			//cal_repeat_time(target_root);
-			//cal_nth_different_subtree_traverse(target_root);
-			//cal_repeat_group_size(target_root);
-
-			//add_virtual_node(target_root);
+			reorder_tree(target_root);
+			cal_repeat_time(target_root);
+			cal_nth_different_subtree_traverse(target_root);
+			cal_repeat_group_size(target_root);
+			add_virtual_node(target_root);
 			linearlize(target_root,linearTreeArray[i]);
+			addTreesValuesNumber(linearTreeArray[i]);
+			addVirtualTreeValues(linearTreeArray[i]);
 			//根据处理得到的数据以及计算得到的坐标值进行实际的绘制
 		}
+
 		reorder_tree(union_root);
 		cal_repeat_time(union_root);
 		cal_nth_different_subtree_traverse(union_root);
@@ -167,7 +186,6 @@ var radial = function(dataList){
 		d3.selectAll('.index-rect').remove();
 		d3.selectAll('.index-text').remove();
 
-		console.log(unionLinearTree);
 		for(var i = 0;i < unionLinearTree.length;i++){
 			if(unionLinearTree[i].maximum_continuous_repeat_group_size != 1 && unionLinearTree[i].continuous_repeat_time == 1){
 				loseBindData.push(unionLinearTree[i]);
@@ -181,7 +199,6 @@ var radial = function(dataList){
 		}
 		draw_barcode(0, setOperationSvgName, includeArray, ISJUDGEAND, NOTJUDGEOR, 0, NOTRESORT);
 		draw_barcode(1, setOperationSvgName, includeArray, NOTJUDGEAND, ISJUDGEOR, 1, NOTRESORT);
-		console.log(dataList);
 		for(var i = 0; i < dataList.length; i++){
 			var Length = dataList.length - 1;
 			draw_barcode(i, radialSvgName, [i], NOTJUDGEAND, NOTJUDGEOR, i, NOTRESORT);
@@ -199,7 +216,7 @@ var radial = function(dataList){
 			document.getElementById('radial-draw-svg').style.height = height + 'px';
 			d3.select("#radial").attr("height", radialSvgHeight);	 
 			if(document.getElementById('set-operation').checked){
-				radialSvgHeight = height - 140;
+				radialSvgHeight = height - SET_OPERATION_GAP;
 				document.getElementById('radial-draw-svg').style.height = radialSvgHeight + 'px';
 				d3.select("#radial").attr("height", radialSvgHeight);
 			}
@@ -220,6 +237,7 @@ var radial = function(dataList){
 				.remove();
 			if(svg_id == radialSvgName){
 				var length = dataList.length>2?dataList.length:2;
+				rectHeight = slideHeight;
 				if(barcodeNum <= maxBarNum){
 					for(var i = 0; i < length; i++){
 						background_rect_record[i] = new Object();
@@ -227,7 +245,7 @@ var radial = function(dataList){
 						background_rect_record[i].height = rectHeight;
 					}
 				}else{
-					rectAllHeight = (radialSvgHeight - rectY * 2)/dataList.length;
+					rectAllHeight = (radialSvgHeight - rectY)/dataList.length;
 					rectHeight = rectAllHeight / 7 * 6;
 					verticalInterval = rectAllHeight / 7;
 					for(var i = 0; i < length; i++){
@@ -241,14 +259,13 @@ var radial = function(dataList){
 				rectHeight = originRectHeight;
 				for(var i = 0; i < length; i++){
 					background_rect_record[i] = new Object();
-					background_rect_record[i].y = rectY + (rectHeight + verticalInterval) * i;
-					background_rect_record[i].height = rectHeight;
+					background_rect_record[i].y = rectY + (originRectHeight + verticalInterval) * i;
+					background_rect_record[i].height = originRectHeight;
 				}
 			}
-
 			if($("#state-change").hasClass("active")){
+				var originButtonNodeArray = get_reduce_attr();
 				if(svg_id == radialSvgName && index == (dataList.length - 1) && (!is_resort)){
-					var originButtonNodeArray = get_reduce_attr();
 					draw_reduce_button(originButtonNodeArray);
 				}
 			}else{
@@ -256,6 +273,46 @@ var radial = function(dataList){
 					var originButtonNodeArray = get_origin_attr();
 					draw_button(originButtonNodeArray);
 				}
+			}
+			//repeattime决定网格的密度
+			function draw_diagnolgrid(svg_id,biasx,biasy,width,height,repeattime)
+			{
+				var cur_button_shape=	"M" + (sawToothW-sawToothWidth) + "," + rectHeight * 0.4 +
+										"L" + (sawToothW * 0.8-sawToothWidth) + ","+ rectHeight * 0.4 + 
+										"L" + (sawToothW-sawToothWidth) + "," + rectHeight * 0.2 +
+										"L" + (sawToothW * 0.8-sawToothWidth) + ","+ rectHeight * 0.2 +
+										"L" + (sawToothW-sawToothWidth) + ","+ 0 +
+										"L" + (0-sawToothWidth) + ","+ 0 +
+										"L" + (0-sawToothWidth) + ","+ rectHeight +
+										"L" + (sawToothW * 0.8-sawToothWidth) + ","+ rectHeight +
+										"L" + (sawToothW-sawToothWidth) + ","+ rectHeight * 0.8 +
+										"L" + (sawToothW * 0.8-sawToothWidth) + ","+ rectHeight * 0.8 +
+										"L" + (sawToothW-sawToothWidth) + ","+ rectHeight * 0.6 +
+										"L" + (sawToothW * 0.8-sawToothWidth) + ","+ rectHeight * 0.6
+				
+				svg = d3.select('#'+svg_id);
+				svg.append("path")	
+					.attr('class', 'diagnolgrid')							 		
+					.attr("d",cur_button_shape)								 		
+					.attr("stroke","black")								 		
+					.attr("stroke-width",1)
+					.attr("fill",function(d,i){  						
+						return "white";  					
+					})
+					.attr("transform",function(d,i){  
+						return "translate(" + (biasx) + "," + (biasy + rectY) + ")";  
+					})
+					.on("mouseover",function(d,i){
+						d3.selectAll('.diagnolgrid')
+							.attr('fill','lightblue');
+					})
+					.on("click",function(d,i){
+						
+					})
+					.on("mouseout",function(){
+						d3.selectAll('.diagnolgrid')
+						.attr('fill','white');
+					})
 			}
 			function draw_reduce_button(originButtonNodeArray){
 				document.getElementById('sort-button-div').innerHTML = "";
@@ -289,7 +346,7 @@ var radial = function(dataList){
 							var sortButton = document.createElement('button');
 							var marginLeft = (beginX - formerEndX);
 							if(marginLeft == 9){
-								marginLeft = 7;
+								marginLeft = 8;
 							}
 							var buttonId = "pattern-" + repeatTime;
 							sortButton.className = "btn btn-default btn-xs pattern";
@@ -303,7 +360,6 @@ var radial = function(dataList){
 								if(thisObject.hasClass('pattern-active')){
 									clickActive(thisObject);
 								}else{
-									console.log('----------------');
 									clickNonActive(thisObject);
 								}
 							};
@@ -378,7 +434,6 @@ var radial = function(dataList){
 								}
 							};
 							$(sortButton).hover(function(){
-								console.log(sortButton);
 								//patternTip.show(sortButton);
 							},function(){
 								//patternTip.hide(sortButton);
@@ -403,6 +458,60 @@ var radial = function(dataList){
 					}
 				}
 			}
+			/*
+			*@function draw_pattern_bg 绘制重复的pattern后面的背景矩形
+			*@parameter originButtonNodeArray 每个节点位置的数组 svg_id绘制在哪一个svg中，与bg的一些属性也有联系
+			*/
+			function draw_pattern_bg(originNodeArray,svg_id,index){
+				var svg = d3.select('#' + svg_id);
+				d3.selectAll('.barcode-bg-' + index + '-' + svg_id).remove();
+				var virtualBeginX = 0, virtualEndX = 0, virtualWidth = 0, virtualHeight = 0, virtualBeginY = 0;
+				var isNormal = true;
+				for(var i = 0;i < unionLinearTree.length;i++){
+					var treeNode = unionLinearTree[i];
+					var treeNodeIndex = treeNode.linear_index;
+					var appendNode = null;
+					if(treeNode.description == 'virtual' && isNormal){
+						virtualBeginX = originNodeArray[i].x - 1;
+						isNormal = false;
+					}
+					if(treeNode.description != 'virtual' && (!isNormal)){
+						virtualEndX = originNodeArray[i].x - 1;
+						virtualWidth = virtualEndX - virtualBeginX;
+						if(svg_id == radialSvgName){
+							virtualBeginY = background_rect_record[index].y - 1;
+							virtualHeight = background_rect_record[index].height + 3;
+							appendNode = svg.append('rect')
+								.attr('class','barcode-bg-' + index + '-' + svg_id
+											 +' barcode-bg')
+								.attr('x',virtualBeginX)
+								.attr('y',virtualBeginY)
+								.attr('width',virtualWidth)
+								.attr('height',virtualHeight)
+								.attr('fill','#a6611a');
+						}
+						//for(var j = 0;j < SET_OPERATION_NUM;j++){
+						if(svg_id == setOperationSvgName){
+							virtualBeginY = rectY + (originRectHeight + verticalInterval) * index
+							virtualHeight = originRectHeight;
+							appendNode = setOperationSvg.append('rect')
+								.attr('class','barcode-bg-' + index + '-' + svg_id
+											+ ' barcode-bg')
+								.attr('x',virtualBeginX)
+								.attr('y',virtualBeginY)
+								.attr('width',virtualWidth)
+								.attr('height',virtualHeight)
+								.attr('fill','#a6611a');
+						}
+						isNormal = true;
+					}
+					if(appendNode != null){
+						appendNode.each(function(d){
+							gotoBackLayer($(this));
+						});
+					}
+				}
+			}
 			function clickActive(this_object){
 				$(".pattern").removeClass("pattern-active");
 				this_object.removeClass("pattern-active")
@@ -423,7 +532,6 @@ var radial = function(dataList){
 				var patternIdArray = this_object.attr('id').split('-');
 				var patternId = +patternIdArray[1];
 				var oneRepeatArray = buttonRepeatArray[patternId];
-				console.log(oneRepeatArray);
 				var processRepeatArray = [];
 				for(var i = 1; i < oneRepeatArray.length; i++){
 					processRepeatArray[i - 1] = new Object();
@@ -435,7 +543,6 @@ var radial = function(dataList){
 					var numB = b.number;
 					return numA < numB;
 				})
-				console.log(processRepeatArray);
 				for(var i = 0; i < dataList.length; i++){
 					var Length = dataList.length - 1;
 					draw_barcode(i, radialSvgName, [i], NOTJUDGEAND, NOTJUDGEOR, processRepeatArray[i].index, ISRESORT);
@@ -507,9 +614,7 @@ var radial = function(dataList){
 					break;
 				}
 			}
-			console.log(drawDepth);
 			if(drawDepth == (MAXDEPTH - 1)){
-				console.log("----------------------");
 				if($("#state-change").hasClass("active")){
 					var originNodeArray = get_reduce_attr(index);
 					draw_reduced_barcoded_tree(linear_tree, index, real_tree_index, originNodeArray);
@@ -518,7 +623,6 @@ var radial = function(dataList){
 					}
 				}else{
 					var originNodeArray = get_origin_attr(index);	
-					console.log("----------------------");
 					draw_barcoded_tree(linear_tree, index, real_tree_index, originNodeArray);
 					if(svg_id == radialSvgName && index == (dataList.length - 1) && (!is_resort)){
 						draw_button(originNodeArray);
@@ -548,6 +652,12 @@ var radial = function(dataList){
 				d3.select("#set-operation-svg").attr("width", width);
 				document.getElementById('sort-button-div-container').style.width = (width + 10) + 'px';
 				document.getElementById('sort-button-div').style.width = (width + 10) + 'px';
+				$('#radial-draw-overflow').scroll(function(){
+					$('#clientsDropDown').scrollLeft($(this).scrollLeft());
+				})
+				$('#clientsDropDown').scroll(function(){
+					$('#radial-draw-overflow').scrollLeft($(this).scrollLeft());
+				})
 			}
 			function get_origin_attr(index){
 				var originNodeArray = new Array();
@@ -678,17 +788,32 @@ var radial = function(dataList){
 				var xCompute = originXCompute;
 				var level = 0;
 				var isFirst = false;
+				var focusDesValueArray = focus_des_value.replace("router","").split("_");
+				for(var i = 0;i < focusDesValueArray.length;i++){
+					focusDesValueArray[i] = +focusDesValueArray[i];
+				}
 				for(var i = 0;i < linear_tree.length;i++){
 					focusNodeArray[i] = new Object();
 					focusNodeArray[i].x = xCompute;
 					level = + linear_tree[i]._depth;
-					var originRoute = linear_tree[i].route;
-					var compareRoute = originRoute.substring(0, focus_des_value.length);
-					var backCompareRoute = focus_des_value.substring(0, originRoute.length);
-					if(compareRoute == focus_des_value || originRoute == backCompareRoute){
+					var originRouteArray = linear_tree[i].route.replace("router","").split("_");
+					for(var j = 0;j < originRouteArray.length;j++){
+						originRouteArray[j] = +originRouteArray[j];
+					}
+					var boolCompareRoute = true;
+					var thisLength = originRouteArray.length < focusDesValueArray.length? 
+											originRouteArray.length:focusDesValueArray.length;
+					for(var j = 0;j < thisLength;j++){
+						if(focusDesValueArray[j] != originRouteArray[j]){
+							boolCompareRoute = false;
+						}
+					}
+					if(linear_tree[i].description == 'virtual'){
+						focusNodeArray[i].width = 0;
+					}else if(boolCompareRoute){
 						isFirst = true;
-						xCompute = xCompute + widthArray[level] * focusWidthMultipler + 2; 
-						focusNodeArray[i].width = widthArray[level] * focusWidthMultipler;
+						xCompute = xCompute + widthArray[level] + 2; 
+						focusNodeArray[i].width = widthArray[level];
 					}else{
 						if(isFirst){
 							insertArray.push(xCompute);
@@ -703,7 +828,6 @@ var radial = function(dataList){
 				resultArray[1] = insertArray;
 				return resultArray;
 			}
-			//---------------------------------------------------------------------------------
 			function get_reduce_attr(index){
 				var reduceNodeArray = new Array();
 				var xCompute = originXCompute;
@@ -744,7 +868,6 @@ var radial = function(dataList){
 						reduceNodeArray[i].height = rectHeight;
 						reduceNodeArray[i].y = rectY + barcoded_tree_biasy;
 					}else if(repeatTime > 1 && (repeatTime - 1)%colNum != 0 && curDepth == initReduceLevel){
-
 						if(repeatTime == maxRepeatTime){
 							xCompute = xCompute + widthArray[curDepth] + 2;
 						}
@@ -928,24 +1051,28 @@ var radial = function(dataList){
 				var max = 25;
 				var sliderWidth = sliderDivWidth * 6 / 10;
 				var sliderHeight = sliderDivHeight * 2 / 10;
+				d3.selectAll('.width-slide-bar').remove();
 				sliderSvg.append("text")
 					.attr("x", 9 * sliderDivWidth / 10)
 					.attr("y", sliderDivHeight * 7 / 10)
 					.attr('id', 'max-text')
+					.attr('class','width-slide-bar')
 					.text(max);
-
 				sliderSvg.append("text")
 					.attr("x", 0)
 					.attr("y", sliderDivHeight * 7 / 10)
+					.attr('class','width-slide-bar')
 					.text("W:");
 
 				sliderSvg.append("text")
 					.attr("x", sliderDivWidth * 1.5 / 10)
 					.attr("y", sliderDivHeight * 7 / 10)
+					.attr('class','width-slide-bar')
 					.attr("id", "now-text");
 
 				sliderSvg.append("g")
 					.attr("id","slider-g")
+					.attr('class','width-slide-bar')					
 					.attr("transform","translate(" + sliderWidth * 4.5 / 10 + "," + sliderDivHeight * 4 / 10 + ")");
 				var sliderHandleWidth = sliderWidth/60;
 				var dragDis = 0;
@@ -971,13 +1098,14 @@ var radial = function(dataList){
 			        .on("dragend",function(d,i){
 			        	widthArray[i] = finalValue;
 						for(var i = 0; i < dataList.length; i++){
-			        		draw_barcode(i, radialSvgName, [i], false, false);
-			        	}
+							var Length = dataList.length - 1;
+							draw_barcode(i, radialSvgName, [i], NOTJUDGEAND, NOTJUDGEOR, i, NOTRESORT);
+						}
+						draw_barcode(0, setOperationSvgName, includeArray, ISJUDGEAND, NOTJUDGEOR, 0, NOTRESORT);
+						draw_barcode(1, setOperationSvgName, includeArray, NOTJUDGEAND, ISJUDGEOR, 0, NOTRESORT);
 						GlobalFormerDepth = shown_depth;
 			        	changePercentage(finalValue);
 			        });
-
-			    sliderSvg.select("#back-slider").remove();
 			    sliderSvg.select("#slider-g")
 					.append("rect")
 					.attr("id","back-slider")
@@ -986,7 +1114,6 @@ var radial = function(dataList){
 					.attr("x",0)
 					.attr("y",0)
 					.attr("fill","gray");
-				sliderSvg.selectAll(".slider").remove();
 				sliderSvg.select("#slider-g")
 					.selectAll(".slider")
 					.data(widthArray)
@@ -1004,7 +1131,7 @@ var radial = function(dataList){
 					.attr("width",sliderHandleWidth)
 					.attr("height",sliderHeight + sliderHeight/2)
 					.attr("fill",function(d,i){
-						return handleColor[i];
+						return LEVEL_ARRAY[i];
 					})
 					.on("mouseover",function(d,i){
 						d3.select(this).classed("slider-hover-" + i,true);
@@ -1021,7 +1148,7 @@ var radial = function(dataList){
 					.call(drag);
 			}
 			draw_height_slide_bar();
-			function draw_height_slide_bar(){	
+			function draw_height_slide_bar(){
 				function changePercentage(text){
 					text = +text;
 					var format_text = parseFloat(Math.round(text * 100) / 100).toFixed(1);
@@ -1037,25 +1164,29 @@ var radial = function(dataList){
 				var max = 2 * originRectHeight;
 				var sliderWidth = heightSliderDivWidth * 6 / 10;
 				var sliderHeight = heightSliderDivHeight * 2 / 10;
-				heightSliderSvg.select("#height-max-text").remove();
+				d3.selectAll(".height-slide-bar").remove();
 				heightSliderSvg.append("text")
 					.attr("x", 9 * sliderDivWidth / 10)
 					.attr("y", sliderDivHeight * 7 / 10)
 					.attr('id', 'height-max-text')
+					.attr('class','height-slide-bar')
 					.text(max);
 
 				heightSliderSvg.append("text")
 					.attr("x", 0)
 					.attr("y", sliderDivHeight * 7 / 10)
+					.attr('class','height-slide-bar')
 					.text("H:");
 
 				heightSliderSvg.append("text")
 					.attr("x", sliderDivWidth * 1.2 / 10)
 					.attr("y", sliderDivHeight * 7 / 10)
-					.attr("id", "height-now-text");
+					.attr("id", "height-now-text")
+					.attr('class','height-slide-bar');
 
 				heightSliderSvg.append("g")
 					.attr("id","slider-height-g")
+					.attr('class','height-slide-bar')
 					.attr("transform","translate(" + sliderWidth * 4.5 / 10 + "," + sliderDivHeight * 4 / 10 + ")");
 				var sliderHandleWidth = sliderWidth / 60;
 				var dragDis = 0;
@@ -1079,14 +1210,15 @@ var radial = function(dataList){
 			        	changePercentage(finalValue);
 			        })
 			        .on("dragend",function(d,i){
+			        	slideHeight = finalValue;
 			        	rectHeight = finalValue;
 						for(var i = 0; i < dataList.length; i++){
-			        		draw_barcode(i, radialSvgName, [i], false, false);
-			        	}
+							var Length = dataList.length - 1;
+							draw_barcode(i, radialSvgName, [i], NOTJUDGEAND, NOTJUDGEOR, i, NOTRESORT);
+						}
 						GlobalFormerDepth = shown_depth;
 			        	changePercentage(finalValue);
 			        });
-			    heightSliderSvg.select("#back-height-slider").remove();
 			    heightSliderSvg.select("#slider-height-g")
 					.append("rect")
 					.attr("id","back-height-slider")
@@ -1095,7 +1227,6 @@ var radial = function(dataList){
 					.attr("x",0)
 					.attr("y",0)
 					.attr("fill","gray");
-				heightSliderSvg.selectAll(".slider-height").remove();
 				heightSliderSvg.select("#slider-height-g")
 					.selectAll(".slider-height")
 					.data([rectHeight])
@@ -1124,10 +1255,25 @@ var radial = function(dataList){
 						clearPercentage();
 					})
 					.call(dragHeight);
-			}
-			function draw_left_sawtooth_button(biasx,biasy,biasy_index)
+			}	
+			//处在左边，齿向右的sawtooth
+			function draw_right_sawtooth_button(biasx,biasy,biasy_index)
 			{
 				var sawToothW = sawToothWidth * 0.6;
+
+				var cur_button_shape=	"M" + (sawToothW-sawToothWidth) + "," + rectHeight * 0.4 +
+										"L" + (sawToothW * 0.8-sawToothWidth) + ","+ rectHeight * 0.4 + 
+										"L" + (sawToothW-sawToothWidth) + "," + rectHeight * 0.2 +
+										"L" + (sawToothW * 0.8-sawToothWidth) + ","+ rectHeight * 0.2 +
+										"L" + (sawToothW-sawToothWidth) + ","+ 0 +
+										"L" + (0-sawToothWidth) + ","+ 0 +
+										"L" + (0-sawToothWidth) + ","+ rectHeight +
+										"L" + (sawToothW * 0.8-sawToothWidth) + ","+ rectHeight +
+										"L" + (sawToothW-sawToothWidth) + ","+ rectHeight * 0.8 +
+										"L" + (sawToothW * 0.8-sawToothWidth) + ","+ rectHeight * 0.8 +
+										"L" + (sawToothW-sawToothWidth) + ","+ rectHeight * 0.6 +
+										"L" + (sawToothW * 0.8-sawToothWidth) + ","+ rectHeight * 0.6
+				/*
 				var cur_button_shape=	"M" + sawToothW + "," + rectHeight * 0.4 +
 										"L" + sawToothW * 0.8 + ","+ rectHeight * 0.4 + 
 										"L" + sawToothW + "," + rectHeight * 0.2 +
@@ -1140,6 +1286,7 @@ var radial = function(dataList){
 										"L" + sawToothW * 0.8 + ","+ rectHeight * 0.8 +
 										"L" + sawToothW + ","+ rectHeight * 0.6 +
 										"L" + sawToothW * 0.8 + ","+ rectHeight * 0.6
+										*/
 				svg = d3.select('#'+svg_id);
 				svg.append("path")	
 					.attr('class', 'sawtooth')							 		
@@ -1167,9 +1314,24 @@ var radial = function(dataList){
 					})
 			}
 			//draw_left_sawtooth_button的(biasx,biasy)右上角坐标
-			function draw_right_sawtooth_button(biasx,biasy,biasy_index)
+			//处在右边，齿向左的sawtooth
+			function draw_left_sawtooth_button(biasx,biasy,biasy_index)
 			{
 				var sawToothW = sawToothWidth * 0.6;
+
+				var cur_button_shape=	"M" + (-sawToothW + sawToothWidth) + "," + rectHeight * 0.4 +
+										"L" + (-sawToothW * 0.8 + sawToothWidth) + ","+ rectHeight * 0.4 + 
+										"L" + (-sawToothW + sawToothWidth) + "," + rectHeight * 0.2 +
+										"L" + (-sawToothW * 0.8 + sawToothWidth) + ","+ rectHeight * 0.2 +
+										"L" + (-sawToothW + sawToothWidth) + ","+ 0 +
+										"L" + (sawToothWidth) + ","+ 0 +
+										"L" + (sawToothWidth) + ","+ rectHeight +
+										"L" + (-sawToothW * 0.8 + sawToothWidth) + ","+ rectHeight +
+										"L" + (-sawToothW + sawToothWidth) + ","+ rectHeight * 0.8 +
+										"L" + (-sawToothW * 0.8 + sawToothWidth) + ","+ rectHeight * 0.8 +
+										"L" + (-sawToothW + sawToothWidth) + ","+ rectHeight * 0.6 +
+										"L" + (-sawToothW * 0.8 + sawToothWidth) + ","+ rectHeight * 0.6
+				/*
 				var cur_button_shape=	"M" + -sawToothW + "," + rectHeight * 0.4 +
 										"L" + -sawToothW * 0.8 + ","+ rectHeight * 0.4 + 
 										"L" + -sawToothW + "," + rectHeight * 0.2 +
@@ -1182,6 +1344,7 @@ var radial = function(dataList){
 										"L" + -sawToothW * 0.8 + ","+ rectHeight * 0.8 +
 										"L" + -sawToothW + ","+ rectHeight * 0.6 +
 										"L" + -sawToothW * 0.8 + ","+ rectHeight * 0.6
+										*/
 				svg = d3.select('#' + svg_id);
 				svg.append("path")	
 					.attr('class','sawtooth')							 		
@@ -1210,32 +1373,43 @@ var radial = function(dataList){
 			function draw_double_sawtooth_button(biasx, biasy,biasy_index)
 			{
 				var sawToothW = sawToothWidth * 0.6;
-				var cur_button_shape_top = "M" + -sawToothW + "," + rectHeight * 0.4 +
-										"L" + -sawToothW * 0.8 + ","+ rectHeight * 0.4 + 
-										"L" + -sawToothW + "," + rectHeight * 0.2 +
-										"L" + -sawToothW * 0.8 + ","+ rectHeight * 0.2 +
-										"L" + -sawToothW + ","+ 0 +
-										"L" + 0 + ","+ 0 +
-										"L" + -sawToothW * 0.2 + ","+ rectHeight * 0.2 +
-										"L" + 0 + ","+ rectHeight * 0.2 +
-										"L" + -sawToothW * 0.2 + ","+ rectHeight * 0.4 +
-										"L" + 0 + ","+ rectHeight * 0.4;
-				var cur_button_shape_bottom = "M" + -sawToothW + "," + rectHeight * 0.6 +
-										"L" + -sawToothW * 0.8 + ","+ rectHeight * 0.6 + 
-										"L" + -sawToothW + "," + rectHeight * 0.8 +
-										"L" + -sawToothW * 0.8 + ","+ rectHeight * 0.8 +
-										"L" + -sawToothW + ","+ rectHeight +
-										"L" + 0 + ","+ rectHeight +
-										"L" + -sawToothW * 0.2 + ","+ rectHeight * 0.8 +
-										"L" + 0 + ","+ rectHeight * 0.8 +
-										"L" + -sawToothW * 0.2 + ","+ rectHeight * 0.6 +
-										"L" + 0 + ","+ rectHeight * 0.6;
+
+				//处在左边，齿向右的sawtooth
+				var cur_button_shape_left =	"M" + (sawToothW-sawToothW) + "," + rectHeight * 0.4 +
+										"L" + (sawToothW * 0.8-sawToothW) + ","+ rectHeight * 0.4 + 
+										"L" + (sawToothW-sawToothW) + "," + rectHeight * 0.2 +
+										"L" + (sawToothW * 0.8-sawToothW) + ","+ rectHeight * 0.2 +
+										"L" + (sawToothW-sawToothW) + ","+ 0 +
+										"L" + (0-sawToothW) + ","+ 0 +
+										"L" + (0-sawToothW) + ","+ rectHeight +
+										"L" + (sawToothW * 0.8-sawToothW) + ","+ rectHeight +
+										"L" + (sawToothW-sawToothW) + ","+ rectHeight * 0.8 +
+										"L" + (sawToothW * 0.8-sawToothW) + ","+ rectHeight * 0.8 +
+										"L" + (sawToothW-sawToothW) + ","+ rectHeight * 0.6 +
+										"L" + (sawToothW * 0.8-sawToothW) + ","+ rectHeight * 0.6
+
+
+				//处在右边，齿向左的sawtooth
+				var cur_button_shape_right=	"M" + (-sawToothW + sawToothWidth) + "," + rectHeight * 0.4 +
+										"L" + (-sawToothW * 0.8 + sawToothWidth) + ","+ rectHeight * 0.4 + 
+										"L" + (-sawToothW + sawToothWidth) + "," + rectHeight * 0.2 +
+										"L" + (-sawToothW * 0.8 + sawToothWidth) + ","+ rectHeight * 0.2 +
+										"L" + (-sawToothW + sawToothWidth) + ","+ 0 +
+										"L" + (sawToothWidth) + ","+ 0 +
+										"L" + (sawToothWidth) + ","+ rectHeight +
+										"L" + (-sawToothW * 0.8 + sawToothWidth) + ","+ rectHeight +
+										"L" + (-sawToothW + sawToothWidth) + ","+ rectHeight * 0.8 +
+										"L" + (-sawToothW * 0.8 + sawToothWidth) + ","+ rectHeight * 0.8 +
+										"L" + (-sawToothW + sawToothWidth) + ","+ rectHeight * 0.6 +
+										"L" + (-sawToothW * 0.8 + sawToothWidth) + ","+ rectHeight * 0.6
+			
+
 				svg = d3.select('#' + svg_id);
 				svg.append("g")
 					.attr("id", "double-saw-tooth")
 					.append("path")	
 					.attr('class','sawtooth-top sawtooth')							 		
-					.attr("d",cur_button_shape_top)								 		
+					.attr("d",cur_button_shape_left)								 		
 					.attr("stroke","black")								 		
 					.attr("stroke-width",1).attr("fill",function(d,i){  						
 						return "white";  					
@@ -1260,7 +1434,7 @@ var radial = function(dataList){
 				d3.select("#double-saw-tooth")
 					.append("path")	
 					.attr('class','sawtooth-bottom sawtooth')							 		
-					.attr("d",cur_button_shape_bottom)								 		
+					.attr("d",cur_button_shape_right)								 		
 					.attr("stroke","black")								 		
 					.attr("stroke-width",1).attr("fill",function(d,i){  						
 						return "white";  					
@@ -1286,8 +1460,10 @@ var radial = function(dataList){
 			for(var i = 0;i < widthArray.length;i++){
 				changeWidthArray[i] = widthArray[i];
 			}
-			//----------------------------------------------------------------------------------
-			var maintain_tooltip_display=[];
+			var changeWidthArray = [];
+			for(var i = 0;i < widthArray.length;i++){
+				changeWidthArray[i] = widthArray[i];
+			}
 			//-----------------------------------------------------------------------------
 			function animation_click_shrink(now_depth,before_depth,origin_depth,target_depth,treeDesArray,treeDesNow, biasy_index,svg_id){
 				var index = biasy_index;
@@ -1301,7 +1477,7 @@ var radial = function(dataList){
 				svg.selectAll('.bar-class-' + index)
 				.data(linear_tree)
 				.transition()
-				.duration(400)
+				.duration(DURATION)
 				.attr('x',function(d,i){
 					return beforeArrayDepth[i].x;
 				})
@@ -1316,7 +1492,7 @@ var radial = function(dataList){
 					svg.selectAll('.bar-class-' + index)
 					.data(linear_tree)
 					.transition()
-					.duration(600)
+					.duration(DURATION)
 					.attr('x',function(d,i){
 						return nowArrayClick[i].x;
 					})
@@ -1359,7 +1535,7 @@ var radial = function(dataList){
 				svg.selectAll('.bar-class-' + index)
 				.data(linear_tree)
 				.transition()
-				.duration(400)
+				.duration(DURATION)
 				.attr('x',function(d,i){
 					return nowArrayClick[i].x;
 				})
@@ -1374,7 +1550,7 @@ var radial = function(dataList){
 					svg.selectAll('.bar-class-' + index)
 					.data(linear_tree)
 					.transition()
-					.duration(600)
+					.duration(DURATION)
 					.attr('width',function(d,i){
 						return nowArrayClick[i].width;
 					})
@@ -1413,7 +1589,7 @@ var radial = function(dataList){
 				svg.selectAll('.bar-class-' + index)
 				.data(linear_tree)
 				.transition()
-				.duration(400)
+				.duration(DURATION)
 				.attr('x',function(d,i){
 					return beforeArrayDepth[i].x;
 				})
@@ -1428,12 +1604,13 @@ var radial = function(dataList){
 					svg.selectAll('.bar-class-' + index)
 					.data(linear_tree)
 					.transition()
-					.duration(600)
+					.duration(DURATION)
 					.attr('x',function(d,i){
 						return nowArrayClick[i].x;
 					})
 					.call(endall, function(){
 						draw_reduce_button(nowArrayClick);
+						draw_pattern_bg(nowArrayClick, svg_id, index);
 						now_depth = +now_depth;
 						target_depth = +target_depth;
 						if(now_depth == target_depth){
@@ -1499,7 +1676,7 @@ var radial = function(dataList){
 				svg.selectAll('.bar-class-' + index)
 				.data(linear_tree)
 				.transition()
-				.duration(400)
+				.duration(DURATION)
 				.attr('x',function(d,i){
 					return nowArrayClick[i].x;
 				})
@@ -1514,12 +1691,13 @@ var radial = function(dataList){
 					svg.selectAll('.bar-class-' + index)
 					.data(linear_tree)
 					.transition()
-					.duration(600)
+					.duration(DURATION)
 					.attr('width',function(d,i){
 						return nowArrayClick[i].width;
 					})
 					.call(endall, function(){
 						draw_reduce_button(nowArrayClick);
+						draw_pattern_bg(nowArrayClick, svg_id, index);
 						//svg.selectAll('.repeat-time-1').style('opacity', 1);
 						now_depth = +now_depth;
 						target_depth = +target_depth;
@@ -1581,7 +1759,7 @@ var radial = function(dataList){
 				svg.selectAll('.bar-class-' + index)
 				.data(linear_tree)
 				.transition()//过渡动画
-				.duration(400)
+				.duration(DURATION)
 				.attr('x',function(d,i){
 					return beforeArrayDepth[i].x;
 				})
@@ -1596,7 +1774,7 @@ var radial = function(dataList){
 					svg.selectAll('.bar-class-' + index)
 					.data(linear_tree)
 					.transition()
-					.duration(600)
+					.duration(DURATION)
 					.attr('x',function(d,i){
 						return nowArrayDepth[i].x;
 					})
@@ -1642,7 +1820,7 @@ var radial = function(dataList){
 				svg.selectAll('.bar-class-' + index)
 				.data(linear_tree)
 				.transition()
-				.duration(400)
+				.duration(DURATION)
 				.attr('x',function(d,i){
 					return nowArrayDepth[i].x;
 				})
@@ -1658,7 +1836,7 @@ var radial = function(dataList){
 					svg.selectAll('.bar-class-' + index)
 					.data(linear_tree)
 					.transition()
-					.duration(600)
+					.duration(DURATION)
 					.attr('width',function(d,i){
 						return nowArrayDepth[i].width;
 					})
@@ -1699,7 +1877,7 @@ var radial = function(dataList){
 				svg.selectAll('.bar-class-' + index)
 				.data(linear_tree)
 				.transition()//过渡动画
-				.duration(600)
+				.duration(DURATION)
 				.attr('x',function(d,i){	
 					return beforeReduceArrayDepth[i].x;
 				})
@@ -1713,12 +1891,13 @@ var radial = function(dataList){
 					svg.selectAll('.bar-class-' + index)
 					.data(linear_tree)
 					.transition()
-					.duration(400)
+					.duration(DURATION)
 					.attr('x',function(d,i){
 						return nowReduceArrayDepth[i].x;
 					})
 					.call(endall, function(){
 						draw_reduce_button(nowReduceArrayDepth);
+						draw_pattern_bg(nowReduceArrayDepth, svg_id, index);
 						now_depth = +now_depth;
 						before_depth = +before_depth;
 						target_depth = +target_depth;
@@ -1759,7 +1938,7 @@ var radial = function(dataList){
 				svg.selectAll('.bar-class-' + index)
 				.data(linear_tree)
 				.transition()
-				.duration(600)
+				.duration(DURATION)
 				.attr('x',function(d,i){
 					return nowReduceArrayDepth[i].x;
 				})
@@ -1774,12 +1953,13 @@ var radial = function(dataList){
 					svg.selectAll('.bar-class-' + index)
 					.data(linear_tree)
 					.transition()
-					.duration(400)
+					.duration(DURATION)
 					.attr('width',function(d,i){
 						return nowReduceArrayDepth[i].width;
 					})
-					.call(endall, function() { 
+					.call(endall, function(){
 						draw_reduce_button(nowReduceArrayDepth);
+						draw_pattern_bg(nowReduceArrayDepth, svg_id, index);
 						now_depth = +now_depth;
 						before_depth = +before_depth;
 						target_depth = +target_depth;
@@ -1810,7 +1990,7 @@ var radial = function(dataList){
 				//for (var i=0;i<linear_tree.length;++i)
 				//	tip_array[i].hide();//hide可以不传参数
 				var svg = d3.select("#" + svg_name);
-
+				d3.selectAll('.barcode-bg').remove();
 				svg.selectAll('.repeat-time-' + index).style('opacity', 0);
 				var targetReduceArray = get_origin_attr_depth(shown_depth, biasy, index);
 
@@ -1818,7 +1998,7 @@ var radial = function(dataList){
 				svg.selectAll('.bar-class-' + index)
 				.data(linear_tree)
 				.transition()
-				.duration(2500)
+				.duration(DURATION)
 				.attr('x',function(d,i){
 					return targetReduceArray[i].x;
 				})
@@ -1832,7 +2012,7 @@ var radial = function(dataList){
 					svg.selectAll('.bar-class-' + index)
 					.data(linear_tree)
 					.transition()
-					.duration(600)
+					.duration(DURATION)
 					.attr('y',function(d,i){
 						return targetReduceArray[i].y;
 					})
@@ -1844,7 +2024,7 @@ var radial = function(dataList){
 					svg.selectAll('.bar-class-' + index)
 					.data(linear_tree)
 					.transition()
-					.duration(600)
+					.duration(DURATION)
 					.attr('height',function(d,i){
 						return targetReduceArray[i].height;
 					})
@@ -1870,7 +2050,7 @@ var radial = function(dataList){
 				svg.selectAll('.bar-class-' + index)
 				.data(linear_tree)
 				.transition()
-				.duration(600)
+				.duration(DURATION)
 				.attr('height',function(d,i){
 					return targetUnreduceArray[i].height;
 				})
@@ -1881,7 +2061,7 @@ var radial = function(dataList){
 					svg.selectAll('.bar-class-' + index)
 					.data(linear_tree)
 					.transition()
-					.duration(600)
+					.duration(DURATION)
 					.attr('y',function(d,i){
 						return targetUnreduceArray[i].y;
 					})
@@ -1893,7 +2073,7 @@ var radial = function(dataList){
 					svg.selectAll('.bar-class-' + index)
 					.data(linear_tree)
 					.transition()
-					.duration(2500)
+					.duration(DURATION)
 					.attr('x',function(d,i){
 						return targetUnreduceArray[i].x;
 					})
@@ -1903,6 +2083,7 @@ var radial = function(dataList){
 					.call(endall, function() {
 					 	//draw_link(biasy,index);
 					 	draw_reduce_button(targetUnreduceArray);
+					 	draw_pattern_bg(targetUnreduceArray, svg_name, index);
 					 	svg.selectAll('.repeat-time-' + index).style('opacity', 1);
 					});
 				}
@@ -1921,7 +2102,7 @@ var radial = function(dataList){
 				svg.selectAll('.bar-class-' + index)
 				.data(linear_tree)
 				.transition()
-				.duration(400)
+				.duration(DURATION)
 				.attr('width',function(d,i){
 					return focusNodeArray[i].width;
 				})
@@ -1932,7 +2113,7 @@ var radial = function(dataList){
 					svg.selectAll('.bar-class-' + index)
 					.data(linear_tree)
 					.transition()
-					.duration(400)
+					.duration(DURATION)
 					.attr('x',function(d,i){
 						return focusNodeArray[i].x;
 					})
@@ -1949,7 +2130,6 @@ var radial = function(dataList){
 						}else{
 							draw_double_sawtooth_button(insertArray[0], biasy, index);
 						}
-						//draw_link(biasy,index);
 					});
 				}
 			}
@@ -1963,7 +2143,7 @@ var radial = function(dataList){
 				svg.selectAll('.bar-class-' + index)
 				.data(linear_tree)
 				.transition()
-				.duration(400)
+				.duration(DURATION)
 				.attr('x',function(d,i){
 					return recoverNodeArray[i].x;
 				})
@@ -1974,7 +2154,7 @@ var radial = function(dataList){
 					svg.selectAll('.bar-class-' + index)
 					.data(linear_tree)
 					.transition()
-					.duration(400)
+					.duration(DURATION)
 					.attr('width',function(d,i){
 						return recoverNodeArray[i].width;
 					})
@@ -2086,7 +2266,8 @@ var radial = function(dataList){
 							' bar-id' + d.linear_index +
 							' bar-class-' + barcoded_tree_rectbackground_index + 
 						    ' num-' + d._depth + 'father-' + fatherIndex + "bg-" + barcoded_tree_rectbackground_index + 
-							" num-" + d._depth +
+							" num-" + d._depth + '-' + barcoded_tree_rectbackground_index +
+							' num-' + d._depth + 
 							' father-' + fatherIndex + 
 							" father-" + fatherIndex + "subtree-" + d.nth_different_subtree +
 							" rect_background_index-" + barcoded_tree_rectbackground_index +
@@ -2095,7 +2276,9 @@ var radial = function(dataList){
 							" " + svg_id;
 				})
 				.attr('id',function(d,i){
-					var id = 'bar-id' + d.linear_index + "rect_background_index-" + barcoded_tree_rectbackground_index;
+					var id = 'bar-id' + d.linear_index +
+							 "rect_background_index-" + barcoded_tree_rectbackground_index + 
+							 "-" + svg_id;
 					var barId = 'bar-id' + d.linear_index;
 					//将continuous_repeat_time为2的节点存储下来，在存储的节点的基础上面append rect
 					if(d.continuous_repeat_time == 2){
@@ -2121,14 +2304,11 @@ var radial = function(dataList){
 					return fillHandler(d,i,real_tree_index);
 				})
 				.on('mouseover',function(d,i){
-					if(d3.select(this).attr("fill") == removeColor){
+					if(d3.select(this).attr("fill") == removeColor)//如果是虚拟结点，就不允许交互
+					{
 						return;
 					}
-					mouseoverHandler(d,i,cur_tree_index);
-					if(d3.select(this).classed(radialSvgName)){
-						var treeId = dataList[barcoded_tree_rectbackground_index].id;
-						ObserverManager.post("percentage",[acc_depth_node_num[d._depth]/linear_tree.length, d._depth, treeId]);
-					}
+					mouseoverHandler(d,i,svg_id,cur_tree_index,this);
 				})
 				.on('mouseout',function(d,i){
 					if(d3.select(this).attr("fill") == removeColor){
@@ -2157,7 +2337,8 @@ var radial = function(dataList){
 							' bar-id' + d.linear_index +
 							' bar-class-' + barcoded_tree_rectbackground_index + 
 						    ' num-' + d._depth + 'father-' + fatherIndex + "bg-" + barcoded_tree_rectbackground_index + 
-							" num-" + d._depth +
+							" num-" + d._depth + '-' + barcoded_tree_rectbackground_index +
+							' num-' + d._depth + 
 							' father-' + fatherIndex + 
 							" father-" + fatherIndex + "subtree-" + d.nth_different_subtree +
 							" rect_background_index-" + barcoded_tree_rectbackground_index +
@@ -2166,7 +2347,8 @@ var radial = function(dataList){
 							" " + svg_id;
 				})
 				.attr('id',function(d,i){
-					var id = 'bar-id' + d.linear_index + "rect_background_index-" + barcoded_tree_rectbackground_index;
+					var id = 'bar-id' + d.linear_index + "rect_background_index-" + barcoded_tree_rectbackground_index
+								+ '-' + svg_id;
 					var barId = 'bar-id' + d.linear_index;
 					//将continuous_repeat_time为2的节点存储下来，在存储的节点的基础上面append rect
 					if(d.continuous_repeat_time == 2){
@@ -2192,14 +2374,11 @@ var radial = function(dataList){
 					return fillHandler(d,i,real_tree_index);
 				})
 				.on('mouseover',function(d,i){
-					if(d3.select(this).attr("fill") == removeColor){
+					if(d3.select(this).attr("fill") == removeColor)//虚拟结点不允许交互
+					{
 						return;
 					}
-					mouseoverHandler(d,i,svg_id,cur_tree_index);
-					if(d3.select(this).classed(radialSvgName)){
-						var treeId = dataList[barcoded_tree_rectbackground_index].id;
-						ObserverManager.post("percentage",[acc_depth_node_num[d._depth]/linear_tree.length, d._depth, treeId]);
-					}	
+					mouseoverHandler(d,i,svg_id,cur_tree_index,this);
 				})
 				.on('mouseout',function(d,i){
 					if(d3.select(this).attr("fill") == removeColor){
@@ -2217,7 +2396,8 @@ var radial = function(dataList){
 						return;
 					}
 					var id = d3.select(this).attr('id');
-					clickHandlerOrigin(d, i ,id);
+					var thisObj = d3.select(this);
+					clickHandlerOrigin(d, i ,id, thisObj);
 				});
 				selection.exit().remove();
 				//draw_link(barcoded_tree_biasy,barcoded_tree_rectbackground_index);
@@ -2227,10 +2407,12 @@ var radial = function(dataList){
 			function draw_reduced_barcoded_tree(linear_tree,cur_tree_index,real_tree_index, reduce_node_array)
 			{
 				reduceNodeArray = reduce_node_array;
+				draw_pattern_bg(reduceNodeArray, svg_id, cur_tree_index);
 				var isShow = true;
 				var nowDepth = -1;
 				draw_index(real_tree_index, cur_tree_index);
 				var svg = d3.select('#' + svg_id); 
+				//svg.selectAll('.bar-class-' + barcoded_tree_rectbackground_index).remove();
 				var divideNum = rowNum * 3 - 1;
 				var barHeight = rectHeight / divideNum * 2;
 				var barGap = rectHeight/divideNum;
@@ -2261,7 +2443,8 @@ var radial = function(dataList){
 						   ' bar-id' + d.linear_index +
 						   ' bar-class-' + barcoded_tree_rectbackground_index + 
 						   ' num-' + d._depth + 'father-' + fatherIndex + 'bg-' + barcoded_tree_rectbackground_index +
-						   " num-" + d._depth + 
+						   " num-" + d._depth + '-' + barcoded_tree_rectbackground_index +
+						   ' num-' + d._depth + 
 						   ' father-' + fatherIndex + 
 						   " father-" + fatherIndex + "subtree-" + d.nth_different_subtree  + 
 						   " rect_background_index-" + barcoded_tree_rectbackground_index + 
@@ -2270,7 +2453,8 @@ var radial = function(dataList){
 						   " " + svg_id;
 				})
 				.attr('id',function(d,i){
-					var id = 'bar-id' + d.linear_index + "rect_background_index-" + barcoded_tree_rectbackground_index;
+					var id = 'bar-id' + d.linear_index + "rect_background_index-" + barcoded_tree_rectbackground_index
+						+ '-' + svg_id;
 					//将continuous_repeat_time为2的节点存储下来，在存储的节点的基础上面append rect
 					var barId = 'bar-id' + d.linear_index;
 					if(d.continuous_repeat_time == 2){
@@ -2299,17 +2483,13 @@ var radial = function(dataList){
 					if(d3.select(this).attr("fill") == removeColor){
 						return;
 					}
-					mouseoverReduceHandler(d, i, svg_id, cur_tree_index);
-				    if(d3.select(this).classed(radialSvgName)){
-				    	var treeId = dataList[barcoded_tree_rectbackground_index].id;
-				    	ObserverManager.post("percentage",[acc_depth_node_num[d._depth]/linear_tree.length, d._depth, treeId]);
-				    }
+					mouseoverReduceHandler(d, i, svg_id, cur_tree_index, this);
 				})
 				.on('mouseout',function(d,i){
 					if(d3.select(this).attr("fill") == removeColor){
 						return;
 					}
-					mouseoutReduceHandler(d,i, svg_id);
+					mouseoutReduceHandler(d,i,svg_id,cur_tree_index);
 				    if(d3.select(this).classed(radialSvgName)){
 				    	var treeId = dataList[barcoded_tree_rectbackground_index].id;
 				    	ObserverManager.post("percentage", [0 ,-1, treeId]);
@@ -2321,7 +2501,8 @@ var radial = function(dataList){
 					}
 					//click一下转换hide或保持的状态
 					var id = d3.select(this).attr('id');
-					clickHandlerReduce(d, i, id);
+					var thisObj = d3.select(this);
+					clickHandlerReduce(d, i, id, thisObj);
 				});
 				//----------------------------------
 				selection.attr('class',function(d,i){
@@ -2333,15 +2514,18 @@ var radial = function(dataList){
 						   ' bar-id' + d.linear_index +
 						   ' bar-class-' + barcoded_tree_rectbackground_index + 
 						   ' num-' + d._depth + 'father-' + fatherIndex + 'bg-' + barcoded_tree_rectbackground_index +
-						   " num-" + d._depth + 
+						   ' num-' + d._depth + 
+						   " num-" + d._depth + '-' + barcoded_tree_rectbackground_index + 
 						   ' father-' + fatherIndex + 
 						   " father-" + fatherIndex + "subtree-" + d.nth_different_subtree  + 
 						   " rect_background_index-" + barcoded_tree_rectbackground_index + 
 						   " class_end" + 
-						   " " + d.route + "-bg-" + barcoded_tree_rectbackground_index;
+						   " " + d.route + "-bg-" + barcoded_tree_rectbackground_index + 
+						   " " + svg_id;
 				})
 				.attr('id',function(d,i){
-					var id = 'bar-id' + d.linear_index + "rect_background_index-" + barcoded_tree_rectbackground_index;
+					var id = 'bar-id' + d.linear_index + "rect_background_index-" + barcoded_tree_rectbackground_index
+						+ '-' + svg_id;
 					//将continuous_repeat_time为2的节点存储下来，在存储的节点的基础上面append rect
 					var barId = 'bar-id' + d.linear_index;
 					if(d.continuous_repeat_time == 2){
@@ -2370,18 +2554,14 @@ var radial = function(dataList){
 					if(d3.select(this).attr("fill") == removeColor){
 						return;
 					}
-					mouseoverReduceHandler(d,i,svg_id,cur_tree_index);
-				    if(d3.select(this).classed(radialSvgName)){
-				    	var treeId = dataList[barcoded_tree_rectbackground_index].id;
-				    	ObserverManager.post("percentage",[acc_depth_node_num[d._depth]/linear_tree.length, d._depth, treeId]);
-				    }
+					mouseoverReduceHandler(d,i,svg_id,cur_tree_index,this);
 				    return radialTip.show;
 				})
 				.on('mouseout',function(d,i){
 					if(d3.select(this).attr("fill") == removeColor){
 						return;
 					}
-					mouseoutReduceHandler(d,i);
+					mouseoutReduceHandler(d,i,svg_id,cur_tree_index);
 				    if(d3.select(this).classed(radialSvgName)){
 				    	var treeId = dataList[barcoded_tree_rectbackground_index].id;
 				    	ObserverManager.post("percentage", [0 ,-1, treeId]);
@@ -2394,7 +2574,8 @@ var radial = function(dataList){
 					}
 					//click一下转换hide或保持的状态
 					var id = d3.select(this).attr('id');
-					clickHandlerReduce(d, i, id);
+					var thisObj = d3.select(this);
+					clickHandlerReduce(d, i, id, thisObj);
 				});
 				//---------------------------------
 				selection.exit().remove();
@@ -2412,7 +2593,12 @@ var radial = function(dataList){
 				var indexTextX2 = originIndexX + indexWidth / 16; //+ indexWidth * 3 / 16;
 				var indexTextOr = originIndexX + indexWidth / 8;
 				var indexTextY = indexRectBeginY + rectHeight * 5 / 8;
-				svg.append('rect')
+				svg.select('#group-' + cur_tree_index).remove();
+
+				var indexGroup = svg.append('g')
+					.attr('id','group-' + cur_tree_index);
+
+				indexGroup.append('rect')
 					.attr('class', 'index-rect')
 					.attr('x',originIndexX)
 					.attr('y', indexRectBeginY)
@@ -2429,7 +2615,7 @@ var radial = function(dataList){
 					switch(cur_tree_index){
 						case 0:
 							indexText = 'AND';	
-							svg.append('text')
+							indexGroup.append('text')
 								.attr('class', 'index-text')
 								.attr('x',originIndexX)
 								.attr('y',indexTextY)
@@ -2438,7 +2624,7 @@ var radial = function(dataList){
 						break;
 						case 1:
 							indexText = 'OR';
-							svg.append('text')
+							indexGroup.append('text')
 								.attr('class','index-text')
 								.attr('x',indexTextOr)
 								.attr('y',indexTextY)
@@ -2447,17 +2633,16 @@ var radial = function(dataList){
 						break;
 					}
 				}else if(svg_id == radialSvgName){
-					console.log(real_tree_index);
 					indexText = dataList[real_tree_index].id;
 					if(indexText < 10){
-						svg.append('text')
+						indexGroup.append('text')
 							.attr('class', 'index-text')
 							.attr('x',indexTextX1)
 							.attr('y',indexTextY)
 							.text(indexText)
 							.style('font-size','15px');
 					}else{
-						svg.append('text')
+						indexGroup.append('text')
 							.attr('class', 'index-text')
 							.attr('x',indexTextX2)
 							.attr('y',indexTextY)
@@ -2471,6 +2656,7 @@ var radial = function(dataList){
 			* @parameter: d,i,cur_tree_index d3原始的参数以及当前绘制的树的index值
 			*/
 			function fillHandler(d,i,cur_tree_index){
+				var depth = +d._depth;
 				if(judgeAnd){
 					// 对于虚拟节点
 					if(d.description == 'virtual'){
@@ -2479,7 +2665,7 @@ var radial = function(dataList){
 							sendArray.push(d.trees_values_array[idArray[j] + 1]);
 						}
 						if(hasAndValue(sendArray)){
-							return "black";
+							return LEVEL_ARRAY[depth];
 						}
 						return removeColor;
 					}
@@ -2489,7 +2675,7 @@ var radial = function(dataList){
 							return removeColor;
 						}
 					}
-					return "black";
+					return LEVEL_ARRAY[depth];
 				}else if(judgeOr){
 					// 对于虚拟节点
 					if(d.description == 'virtual'){
@@ -2498,27 +2684,27 @@ var radial = function(dataList){
 							sendArray.push(d.trees_values_array[idArray[j] + 1]);
 						}
 						if(hasOrValue(sendArray)){
-							return "black";
+							return LEVEL_ARRAY[depth];
 						}
 						return removeColor;
 					}
 					// 对于实际存在的节点
 					for(var j = 0;j < idArray.length;j++){
 						if(d.trees_values[idArray[j] + 1] != 'none'){
-							return "black";
+							return LEVEL_ARRAY[depth];
 						}
 					}
 					return removeColor;
 				}else{
 					if(d.description == 'virtual' && d.trees_values[cur_tree_index + 1] != 0){
-						return 'black';
+						return LEVEL_ARRAY[depth];
 					}else if(d.description == 'virtual' && d.trees_values[cur_tree_index + 1] == 0){
 						return removeColor;
 					}
 					if(d.trees_values[cur_tree_index + 1] == 'none'){
 						return removeColor;
 					}else{
-						return "black";
+						return LEVEL_ARRAY[depth];;
 					}
 				}
 			}
@@ -2559,8 +2745,7 @@ var radial = function(dataList){
 			* @function: clickHandlerReduce判断缩略状态下点击的响应事件(reduce模式)
 			* @parameter: d, i, id d3原始的参数以及click node的id
 			*/
-			function clickHandlerReduce(d,i,id){
-				d3.selectAll(".triangle").remove();
+			function clickHandlerReduce(d, i, id, this_obj){
 			 	var idArray = id.split('-');
 				var biasy_index = +idArray[2];
 				var routeIndex = -1;
@@ -2571,31 +2756,39 @@ var radial = function(dataList){
 					}
 				}
 				var add = true;
-				if(!($('#switch-button').bootstrapSwitch("state"))){
-					if(routeIndex == -1){
-						if($("#state-change").hasClass("active")){
-							for(var i = 0;i < dataList.length;i++){
-								animation_click_reduce_shrink(GlobalFormerDepth,GlobalFormerDepth,GlobalFormerDepth,d._depth,GlobalTreeDesArray,d.route,i,radialSvgName);
-							}
-							for(var i = 0;i < setOperationNum;i++){
-								animation_click_reduce_shrink(GlobalFormerDepth,GlobalFormerDepth,GlobalFormerDepth,d._depth,GlobalTreeDesArray,d.route,i,setOperationSvgName);
-							}
-						}else{
-							for(var i = 0;i < dataList.length;i++){
-								animation_click_shrink(GlobalFormerDepth,GlobalFormerDepth,GlobalFormerDepth,d._depth,GlobalTreeDesArray,d.route,i,radialSvgName);
-							}
-							for(var i = 0;i < setOperationNum;i++){
-								animation_click_shrink(GlobalFormerDepth,GlobalFormerDepth,GlobalFormerDepth,d._depth,GlobalTreeDesArray,d.route,i,setOperationSvgName);
+				var thisObjHeight = +this_obj.attr('height');
+					if(!($('#switch-button').bootstrapSwitch("state"))){
+						if(thisObjHeight >= rectHeight){
+							d3.selectAll(".triangle").remove();
+							if(routeIndex == -1){
+								if($("#state-change").hasClass("active")){
+									for(var i = 0;i < dataList.length;i++){
+										animation_click_reduce_shrink(GlobalFormerDepth,GlobalFormerDepth,GlobalFormerDepth,d._depth,GlobalTreeDesArray,d.route,i,radialSvgName);
+									}
+									for(var i = 0;i < setOperationNum;i++){
+										animation_click_reduce_shrink(GlobalFormerDepth,GlobalFormerDepth,GlobalFormerDepth,d._depth,GlobalTreeDesArray,d.route,i,setOperationSvgName);
+									}
+								}else{
+									for(var i = 0;i < dataList.length;i++){
+										animation_click_shrink(GlobalFormerDepth,GlobalFormerDepth,GlobalFormerDepth,d._depth,GlobalTreeDesArray,d.route,i,radialSvgName);
+									}
+									for(var i = 0;i < setOperationNum;i++){
+										animation_click_shrink(GlobalFormerDepth,GlobalFormerDepth,GlobalFormerDepth,d._depth,GlobalTreeDesArray,d.route,i,setOperationSvgName);
+									}
+								}
 							}
 						}
 					}else{
 						if($("#state-change").hasClass("active")){
-							for(var i = 0;i < dataList.length;i++){
-								animation_click_reduce_stretch(d._depth,d._depth,GlobalFormerDepth,GlobalFormerDepth,GlobalTreeDesArray,d.route,i,radialSvgName);
-							}
-							for(var i = 0;i < setOperationNum;i++){
-								animation_click_reduce_stretch(d._depth,d._depth,GlobalFormerDepth,GlobalFormerDepth,GlobalTreeDesArray,d.route,i,setOperationSvgName);
-							}
+							var thisObjHeight = +this_obj.attr('height');
+							if(thisObjHeight >= rectHeight){
+								for(var i = 0;i < dataList.length;i++){
+									animation_click_reduce_stretch(d._depth,d._depth,GlobalFormerDepth,GlobalFormerDepth,GlobalTreeDesArray,d.route,i,radialSvgName);
+								}
+								for(var i = 0;i < setOperationNum;i++){
+									animation_click_reduce_stretch(d._depth,d._depth,GlobalFormerDepth,GlobalFormerDepth,GlobalTreeDesArray,d.route,i,setOperationSvgName);
+								}
+							}		
 						}else{
 							for(var i = 0;i < dataList.length;i++){
 								animation_click_stretch(d._depth,d._depth,GlobalFormerDepth,GlobalFormerDepth,GlobalTreeDesArray,d.route,i,radialSvgName);
@@ -2624,13 +2817,11 @@ var radial = function(dataList){
 					}
 				}*/
 				//draw_link(barcoded_tree_biasy,barcoded_tree_rectbackground_index);
-			 }
 			/* 
 			* @function: clickHandlerOrigin判断原始的barcode状态下点击的响应事件(origin模式)
 			* @parameter: d, i, id表示的是d3原始的参数以及click node的id
 			*/
-			function clickHandlerOrigin(d,i,id){
-				d3.selectAll(".triangle").remove();
+			function clickHandlerOrigin(d,i,id,this_obj){
 				var idArray = id.split('-');
 				var biasy_index = +idArray[2];
 				FocusDesValue = d.route;
@@ -2642,42 +2833,47 @@ var radial = function(dataList){
 					}
 				}
 				var add = true;
-				console.log('clickHandler');
+				var thisObjHeight = +this_obj.attr('height');
+				//在缩略的状态下
 				if(!($('#switch-button').bootstrapSwitch("state"))){
-					if(routeIndex == -1){
-						if($("#state-change").hasClass("active")){
-							for(var i = 0;i < dataList.length;i++){
-								animation_click_reduce_shrink(GlobalFormerDepth,GlobalFormerDepth,GlobalFormerDepth,d._depth,GlobalTreeDesArray,d.route,i,radialSvgName);//biasy_index
-							}
-							for(var i = 0;i < setOperationNum;i++){
-								animation_click_reduce_shrink(GlobalFormerDepth,GlobalFormerDepth,GlobalFormerDepth,d._depth,GlobalTreeDesArray,d.route,i,setOperationSvgName);
-							}
-						}else{
-							for(var i = 0;i < dataList.length;i++){
-								animation_click_shrink(GlobalFormerDepth,GlobalFormerDepth,GlobalFormerDepth,d._depth,GlobalTreeDesArray,d.route,i,radialSvgName);//biasy_index
-							}
-							for(var i = 0;i < setOperationNum;i++){
-								animation_click_shrink(GlobalFormerDepth,GlobalFormerDepth,GlobalFormerDepth,d._depth,GlobalTreeDesArray,d.route,i,setOperationSvgName);
-							}
-						}
-					}else{
-						if($("#state-change").hasClass("active")){
-							for(var i = 0;i < dataList.length;i++){
-								animation_click_reduce_stretch(d._depth,d._depth,GlobalFormerDepth,GlobalFormerDepth,GlobalTreeDesArray,d.route,i,radialSvgName);//biasy_index
-							}
-							for(var i = 0;i < setOperationNum;i++){
-								animation_click_reduce_stretch(d._depth,d._depth,GlobalFormerDepth,GlobalFormerDepth,GlobalTreeDesArray,d.route,i,setOperationSvgName);
+					if(thisObjHeight >= rectHeight){
+						d3.selectAll(".triangle").remove();
+						if(routeIndex == -1){
+							if($("#state-change").hasClass("active")){
+								for(var i = 0;i < dataList.length;i++){
+									animation_click_reduce_shrink(GlobalFormerDepth,GlobalFormerDepth,GlobalFormerDepth,d._depth,GlobalTreeDesArray,d.route,i,radialSvgName);//biasy_index
+								}
+								for(var i = 0;i < setOperationNum;i++){
+									animation_click_reduce_shrink(GlobalFormerDepth,GlobalFormerDepth,GlobalFormerDepth,d._depth,GlobalTreeDesArray,d.route,i,setOperationSvgName);
+								}
+							}else{
+								for(var i = 0;i < dataList.length;i++){
+									animation_click_shrink(GlobalFormerDepth,GlobalFormerDepth,GlobalFormerDepth,d._depth,GlobalTreeDesArray,d.route,i,radialSvgName);//biasy_index
+								}
+								for(var i = 0;i < setOperationNum;i++){
+									animation_click_shrink(GlobalFormerDepth,GlobalFormerDepth,GlobalFormerDepth,d._depth,GlobalTreeDesArray,d.route,i,setOperationSvgName);
+								}
 							}
 						}else{
-							for(var i = 0;i < dataList.length;i++){
-								animation_click_stretch(d._depth,d._depth,GlobalFormerDepth,GlobalFormerDepth,GlobalTreeDesArray,d.route,i,radialSvgName);//biasy_index
-							}
-							for(var i = 0;i < setOperationNum;i++){
-								animation_click_stretch(d._depth,d._depth,GlobalFormerDepth,GlobalFormerDepth,GlobalTreeDesArray,d.route,i,setOperationSvgName);
+							if($("#state-change").hasClass("active")){
+								for(var i = 0;i < dataList.length;i++){
+									animation_click_reduce_stretch(d._depth,d._depth,GlobalFormerDepth,GlobalFormerDepth,GlobalTreeDesArray,d.route,i,radialSvgName);//biasy_index
+								}
+								for(var i = 0;i < setOperationNum;i++){
+									animation_click_reduce_stretch(d._depth,d._depth,GlobalFormerDepth,GlobalFormerDepth,GlobalTreeDesArray,d.route,i,setOperationSvgName);
+								}
+							}else{
+								for(var i = 0;i < dataList.length;i++){
+									animation_click_stretch(d._depth,d._depth,GlobalFormerDepth,GlobalFormerDepth,GlobalTreeDesArray,d.route,i,radialSvgName);//biasy_index
+								}
+								for(var i = 0;i < setOperationNum;i++){
+									animation_click_stretch(d._depth,d._depth,GlobalFormerDepth,GlobalFormerDepth,GlobalTreeDesArray,d.route,i,setOperationSvgName);
+								}
 							}
 						}
 					}
 				}else{
+					//在focus的状态下
 					d3.selectAll('.triangle-' + biasy_index).remove();
 					if(FocusDesValue != 'router'){
 						if($("#state-change").hasClass("active")){
@@ -2698,8 +2894,18 @@ var radial = function(dataList){
 			/*
 			* @function: mouseoverhandler 鼠标hover的响应事件(origin模式)
 			* @parameter: d,i d3原始的参数 
+			*	cur_tree_index是树在当前的图中的编号，而不是在histogram中的编号
 			*/
-			function mouseoverHandler(d,i,svg_id,cur_tree_index){
+			function mouseoverHandler(d,i,svg_id,cur_tree_index,this_element){
+				//与histogram的linking
+				if(d3.select(this_element).classed(radialSvgName)){
+					var treeId = dataList[barcoded_tree_rectbackground_index].id;
+					var cur_tree_sumvalue=linear_tree[0].trees_values[cur_tree_index+1];
+					var cur_node_value=d.trees_values[cur_tree_index+1];
+
+					//发出当前的树节点的流量占当前的树的总流量的比例
+					ObserverManager.post("percentage",[cur_node_value/cur_tree_sumvalue, d._depth, treeId]);
+				}
 				radialTip.show(d);
 				var svg = d3.select("#" + svg_id);
 				var fatherIndex = -1;
@@ -2707,15 +2913,21 @@ var radial = function(dataList){
 				var thisIndex = d.linear_index;
 				var bgRectInfo = background_rect_record[cur_tree_index];
 				if (document.getElementById("highlight_self").checked){
-					d3.selectAll('.bar-id' + thisIndex).classed("this-highlight",true);
+					var thisIndexNodes = d3.selectAll('.bar-id' + thisIndex)[0];
+					for(var j = 0;j < thisIndexNodes.length;j++){
+						var id = thisIndexNodes[j].id;
+						if(d3.select("#" + id).attr('fill') != removeColor){
+							d3.select("#" + id).classed('this-highlight',true);
+						}
+					}
 				}
-				var thisWidth = +svg.select('#bar-id' + thisIndex + "rect_background_index-" + barcoded_tree_rectbackground_index)
+				var thisWidth = +svg.select('#bar-id' + thisIndex + "rect_background_index-" + cur_tree_index + "-" + svg_id)
 						.attr("width");
-				var thisX = +svg.select('#bar-id' + thisIndex + "rect_background_index-" + barcoded_tree_rectbackground_index)
+				var thisX = +svg.select('#bar-id' + thisIndex + "rect_background_index-" + cur_tree_index + "-" + svg_id)
 						.attr("x") + thisWidth / 2;
-				var thisY = +svg.select('#bar-id' + thisIndex + "rect_background_index-" + barcoded_tree_rectbackground_index)
+				var thisY = +svg.select('#bar-id' + thisIndex + "rect_background_index-" + cur_tree_index + "-" + svg_id)
 						.attr("y");
-				var thisHeight = +svg.select('#bar-id' + thisIndex + "rect_background_index-" + barcoded_tree_rectbackground_index)
+				var thisHeight = +svg.select('#bar-id' + thisIndex + "rect_background_index-" + cur_tree_index + "-" + svg_id)
 						.attr("height");
 				if(d._father!=undefined){
 					fatherIndex = d._father.linear_index;
@@ -2723,14 +2935,21 @@ var radial = function(dataList){
 					sibling_group=father.children;
 					if (document.getElementById("highlight_sibling").checked)
 					{
-						for (var j=0;j<sibling_group.length;++j)
-						{
-							var cur_sibling=sibling_group[j];
-							var siblingId=cur_sibling.linear_index;
-							svg.selectAll('#bar-id' + siblingId + "rect_background_index-" + barcoded_tree_rectbackground_index)
-									.classed("sibiling-highlight",true);
+						if(sibling_group!=undefined){
+							for (var j=0;j<sibling_group.length;++j)
+							{
+								var cur_sibling=sibling_group[j];
+								var siblingId=cur_sibling.linear_index;
+								svg.select('#bar-id' + siblingId + "rect_background_index-" + cur_tree_index + "-" + svg_id)
+										.classed("sibiling-highlight",true);
+							}
 						}
 					}
+				}
+				//hightlight cousin
+				if (document.getElementById("highlight_cousin").checked)
+				{
+					svg.selectAll('.num-' + d._depth + '-' + cur_tree_index).classed("cousin-highlight",true);		
 				}
 				//-------------highlight parent node-----------------
 				var fatherId = 0;
@@ -2741,15 +2960,15 @@ var radial = function(dataList){
 				}
 				if (document.getElementById("highlight_father").checked && fatherId != -1)
 				{
-					svg.select('#bar-id' + fatherId + "rect_background_index-" + barcoded_tree_rectbackground_index)
+					svg.select('#bar-id' + fatherId + "rect_background_index-" + cur_tree_index + "-" + svg_id)
 						.classed("father-highlight",true);
-					var fatherWidth = +svg.select('#bar-id' + fatherId + "rect_background_index-" + barcoded_tree_rectbackground_index)
+					var fatherWidth = +svg.select('#bar-id' + fatherId + "rect_background_index-" + cur_tree_index + "-" + svg_id)
 						.attr("width");
-					var fatherX = +svg.select('#bar-id' + fatherId + "rect_background_index-" + barcoded_tree_rectbackground_index)
+					var fatherX = +svg.select('#bar-id' + fatherId + "rect_background_index-" + cur_tree_index + "-" + svg_id)
 						.attr("x") + fatherWidth / 2;
-					var fatherY = +svg.select('#bar-id' + fatherId + "rect_background_index-" + barcoded_tree_rectbackground_index)
+					var fatherY = +svg.select('#bar-id' + fatherId + "rect_background_index-" + cur_tree_index + "-" + svg_id)
 						.attr("y");
-					var fatherHeight = +svg.select('#bar-id' + fatherId + "rect_background_index-" + barcoded_tree_rectbackground_index)
+					var fatherHeight = +svg.select('#bar-id' + fatherId + "rect_background_index-" + cur_tree_index + "-" + svg_id)
 						.attr("height");
 					var radius = (thisX - fatherX)/2;
 					var line = d3.svg.line.radial()
@@ -2764,9 +2983,9 @@ var radial = function(dataList){
 					if(thisWidth != 0 && fatherWidth != 0){
 			   			svg.append("path")
 					   	.datum(d3.range(points))
-						.attr("class", "line " + "bg-" + barcoded_tree_rectbackground_index + "f-" + fatherId 
-			    				+ " bg-" + barcoded_tree_rectbackground_index + "c-" + thisIndex 
-								+ " arc_background_index-" + barcoded_tree_rectbackground_index
+						.attr("class", "line " + "bg-" + cur_tree_index + "f-" + fatherId 
+			    				+ " bg-" + cur_tree_index + "c-" + thisIndex 
+								+ " arc_background_index-" + cur_tree_index
 								+ " class_end"
 			    		)
 			    		.attr('id','path-f' + fatherId +'-c-'+ thisIndex)
@@ -2783,14 +3002,14 @@ var radial = function(dataList){
 				{
 					for(var i = 0;i < children.length;i++){
 						var childId = children[i].linear_index;
-						var isExist = svg.select('#bar-id' + childId  + "rect_background_index-" + barcoded_tree_rectbackground_index)
+						var isExist = svg.select('#bar-id' + childId  + "rect_background_index-" + cur_tree_index + "-" + svg_id)
 							.attr("fill") != removeColor;
 						if(isExist){
-							svg.select('#bar-id' + childId + "rect_background_index-" + barcoded_tree_rectbackground_index)
+							svg.select('#bar-id' + childId + "rect_background_index-" + cur_tree_index + "-" + svg_id)
 								.classed("children-highlight",true);
-							var childWidth = +svg.select('#bar-id' + childId + "rect_background_index-" + barcoded_tree_rectbackground_index)
+							var childWidth = +svg.select('#bar-id' + childId + "rect_background_index-" + cur_tree_index + "-" + svg_id)
 								.attr("width");
-							var childX = +svg.select('#bar-id' + childId + "rect_background_index-" + barcoded_tree_rectbackground_index)
+							var childX = +svg.select('#bar-id' + childId + "rect_background_index-" + cur_tree_index + "-" + svg_id)
 								.attr("x") + childWidth / 2;
 							var radius = (childX - thisX) / 2;
 							var line = d3.svg.line.radial()
@@ -2805,9 +3024,9 @@ var radial = function(dataList){
 							if(thisWidth != 0 && childWidth != 0){
 								svg.append("path")
 							   	.datum(d3.range(points))
-								.attr("class", "line " + "bg-" + barcoded_tree_rectbackground_index + "f-" + thisIndex 
-					    				+ " bg-" + barcoded_tree_rectbackground_index + "c-" + childId 
-										+ " arc_background_index-" + barcoded_tree_rectbackground_index
+								.attr("class", "line " + "bg-" + cur_tree_index + "f-" + thisIndex 
+					    				+ " bg-" + cur_tree_index + "c-" + childId 
+										+ " arc_background_index-" + cur_tree_index
 										+ " class_end"
 					    		)
 					    		.attr('id','path-f' + fatherId +'-c-'+ thisIndex)
@@ -2821,7 +3040,7 @@ var radial = function(dataList){
 			   if(d._father!=undefined){
 					svg.selectAll(".father-" + d._father.linear_index +
 								  "subtree-" + d.nth_different_subtree + 
-								  "rect_background_index-" + barcoded_tree_rectbackground_index)
+								  "rect_background_index-" + cur_tree_index)
 						.classed("same-sibling",true);
 				} 				
 			}
@@ -2838,6 +3057,9 @@ var radial = function(dataList){
 				d3.selectAll(".line").remove();
 				d3.selectAll('.bar-class')
 				.classed("sibiling-highlight",false);
+
+				d3.selectAll('.bar-class')
+				.classed("cousin-highlight",false);
 
 				d3.selectAll('.bar-class')
 				.classed("father-highlight",false);
@@ -2867,23 +3089,37 @@ var radial = function(dataList){
 			* @function: mouseoverReduceHandler 鼠标hover的响应事件(reduce模式)
 			* @parameter: d, i d3的原始的参数
 			*/
-			function mouseoverReduceHandler(d,i,svg_id,cur_tree_index){
+			function mouseoverReduceHandler(d,i,svg_id,cur_tree_index,this_element){
+				//与histogram的linking
+				if(d3.select(this_element).classed(radialSvgName)){
+					var treeId = dataList[barcoded_tree_rectbackground_index].id;
+					var cur_tree_sumvalue=linear_tree[0].trees_values[cur_tree_index+1];
+					var cur_node_value=d.trees_values[cur_tree_index+1];
+					//发出当前的树节点的流量占当前的树的总流量的比例
+					ObserverManager.post("percentage",[cur_node_value/cur_tree_sumvalue, d._depth, treeId]);
+				}
 				var svg = d3.select("#" + svg_id);
 				radialTip.show(d);
 				var fatherIndex = -1;
 				var thisIndex = d.linear_index;
-				var linkHeight = rectHeight/2;
+				var linkHeight = rectHeight / 2;
 				var bgRectInfo = background_rect_record[cur_tree_index];
 				if (document.getElementById("highlight_self").checked){
-					d3.selectAll('.bar-id' + thisIndex).classed("this-highlight",true);
+					var thisIndexNodes = d3.selectAll('.bar-id' + thisIndex)[0];
+					for(var j = 0;j < thisIndexNodes.length;j++){
+						var id = thisIndexNodes[j].id;
+						if(d3.select("#" + id).attr('fill') != removeColor){
+							d3.select("#" + id).classed('this-highlight',true);
+						}
+					}
 				}
-				var thisWidth = +svg.select('#bar-id' + thisIndex + "rect_background_index-" + barcoded_tree_rectbackground_index)
+				var thisWidth = +svg.select('#bar-id' + thisIndex + "rect_background_index-" + cur_tree_index + "-" + svg_id)
 						.attr("width");
-				var thisX = +svg.select('#bar-id' + thisIndex + "rect_background_index-" + barcoded_tree_rectbackground_index)
+				var thisX = +svg.select('#bar-id' + thisIndex + "rect_background_index-" + cur_tree_index + "-" + svg_id)
 						.attr("x") + thisWidth / 2;
-				var thisY = +svg.select('#bar-id' + thisIndex + "rect_background_index-" + barcoded_tree_rectbackground_index)
+				var thisY = +svg.select('#bar-id' + thisIndex + "rect_background_index-" + cur_tree_index + "-" + svg_id)
 						.attr("y");
-				var thisHeight = +svg.select('#bar-id' + thisIndex + "rect_background_index-" + barcoded_tree_rectbackground_index)
+				var thisHeight = +svg.select('#bar-id' + thisIndex + "rect_background_index-" + cur_tree_index + "-" + svg_id)
 						.attr("height");
 				if(d._father!=undefined){
 					/*fatherIndex = d._father.linear_index;
@@ -2897,10 +3133,41 @@ var radial = function(dataList){
 						{
 							var cur_sibling=sibling_group[j];
 							var siblingId=cur_sibling.linear_index;
-							svg.selectAll('#bar-id' + siblingId + "rect_background_index-" + barcoded_tree_rectbackground_index)
+							svg.select('#bar-id' + siblingId + "rect_background_index-" + cur_tree_index + "-" + svg_id)
 									.classed("sibiling-highlight",true);
 						}
 					}
+				}
+				//hightlight cousin
+				if (document.getElementById("highlight_cousin").checked)
+				{
+					svg.selectAll('.num-' + d._depth + '-' + cur_tree_index).classed("cousin-highlight",true);						    
+					/*traverse_highlight_cousin(svg,d._depth,linear_tree[0],cur_tree_index)
+					function traverse_highlight_cousin(svg,depth,root,cur_tree_index)
+					{
+						if (root._depth>depth)
+						{
+							return;
+						}
+						if (root._depth==depth)//达到目标层了
+						{
+							
+								svg.selectAll('#bar-id' + root.linear_index + "rect_background_index-" + cur_tree_index)
+											.classed("cousin-highlight",true);
+							
+						}
+						else
+						{
+							var cur_children_group=root.children;
+							if (typeof(cur_children_group)!="undefined")
+							{
+								for (var i=0;i<cur_children_group.length;++i)
+								{
+									traverse_highlight_cousin(svg,depth,cur_children_group[i],cur_tree_index)
+								}
+							}
+						}
+					}*/
 				}
 				// 高亮父亲节点
 				var fatherId = 0;
@@ -2911,15 +3178,15 @@ var radial = function(dataList){
 				}
 				if (document.getElementById("highlight_father").checked && fatherId != -1)
 				{
-					svg.selectAll('#bar-id' + fatherId  + "rect_background_index-" + barcoded_tree_rectbackground_index)
+					svg.selectAll('#bar-id' + fatherId  + "rect_background_index-" + cur_tree_index + "-" + svg_id)
 						.classed("father-highlight",true);
-					var fatherWidth = +svg.select('#bar-id' + fatherId + "rect_background_index-" + barcoded_tree_rectbackground_index)
+					var fatherWidth = +svg.select('#bar-id' + fatherId + "rect_background_index-" + cur_tree_index + "-" + svg_id)
 						.attr("width");
-					var fatherX = +svg.select('#bar-id' + fatherId + "rect_background_index-" + barcoded_tree_rectbackground_index)
+					var fatherX = +svg.select('#bar-id' + fatherId + "rect_background_index-" + cur_tree_index + "-" + svg_id)
 						.attr("x") + fatherWidth / 2;
-					var fatherHeight = +svg.select('#bar-id' + fatherId + "rect_background_index-" + barcoded_tree_rectbackground_index)
+					var fatherHeight = +svg.select('#bar-id' + fatherId + "rect_background_index-" + cur_tree_index + "-" + svg_id)
 						.attr("height");
-					var fatherY = +svg.select('#bar-id' + fatherId + "rect_background_index-" + barcoded_tree_rectbackground_index)
+					var fatherY = +svg.select('#bar-id' + fatherId + "rect_background_index-" + cur_tree_index + "-" + svg_id)
 						.attr("y");
 					var radius = (thisX - fatherX)/2;
 					var line = d3.svg.line.radial()
@@ -2934,9 +3201,9 @@ var radial = function(dataList){
 					if(thisWidth != 0 && fatherWidth != 0){
 			   			svg.append("path")
 					   	.datum(d3.range(points))
-						.attr("class", "line " + "bg-" + barcoded_tree_rectbackground_index + "f-" + fatherId 
-			    				+ " bg-" + barcoded_tree_rectbackground_index + "c-" + thisIndex 
-								+ " arc_background_index-" + barcoded_tree_rectbackground_index
+						.attr("class", "line " + "bg-" + cur_tree_index + "f-" + fatherId 
+			    				+ " bg-" + cur_tree_index + "c-" + thisIndex 
+								+ " arc_background_index-" + cur_tree_index
 								+ " class_end"
 			    		)
 			    		.attr('id','path-f' + fatherId +'-c-'+ thisIndex)
@@ -2953,14 +3220,14 @@ var radial = function(dataList){
 				{
 					for(var i = 0;i < children.length;i++){
 						var childId = children[i].linear_index;
-						var isExist = svg.select('#bar-id' + childId  + "rect_background_index-" + barcoded_tree_rectbackground_index)
+						var isExist = svg.select('#bar-id' + childId  + "rect_background_index-" + cur_tree_index + "-" + svg_id)
 							.attr("fill") != removeColor;
 						if(isExist){
-							svg.selectAll('#bar-id' + childId  + "rect_background_index-" + barcoded_tree_rectbackground_index)
+							svg.selectAll('#bar-id' + childId  + "rect_background_index-" + cur_tree_index + "-" + svg_id)
 								.classed("children-highlight",true);
-							var childWidth = +svg.select('#bar-id' + childId + "rect_background_index-" + barcoded_tree_rectbackground_index)
+							var childWidth = +svg.select('#bar-id' + childId + "rect_background_index-" + cur_tree_index + "-" + svg_id)
 								.attr("width");
-							var childX = +svg.select('#bar-id' + childId + "rect_background_index-" + barcoded_tree_rectbackground_index)
+							var childX = +svg.select('#bar-id' + childId + "rect_background_index-" + cur_tree_index + "-" + svg_id)
 								.attr("x") + childWidth / 2;
 							var radius = (childX - thisX) / 2;
 							var line = d3.svg.line.radial()
@@ -2975,9 +3242,9 @@ var radial = function(dataList){
 							if(thisWidth != 0 && childWidth != 0){
 								svg.append("path")
 							   	.datum(d3.range(points))
-								.attr("class", "line " + "bg-" + barcoded_tree_rectbackground_index + "f-" + thisIndex 
-					    				+ " bg-" + barcoded_tree_rectbackground_index + "c-" + childId 
-										+ " arc_background_index-" + barcoded_tree_rectbackground_index
+								.attr("class", "line " + "bg-" + cur_tree_index + "f-" + thisIndex 
+					    				+ " bg-" + cur_tree_index + "c-" + childId 
+										+ " arc_background_index-" + cur_tree_index
 										+ " class_end"
 					    		)
 					    		.attr('id','path-f' + fatherId +'-c-'+ thisIndex)
@@ -2991,7 +3258,7 @@ var radial = function(dataList){
 				if(d._father!=undefined){
 				   	svg.selectAll(".father-" + d._father.linear_index +
 				   				  "subtree-" + d.nth_different_subtree + 
-				   				  "rect_background_index-" + barcoded_tree_rectbackground_index)
+				   				  "rect_background_index-" + cur_tree_index)
 				   	.classed("same-sibling",true);
 				}
 			}
@@ -2999,7 +3266,7 @@ var radial = function(dataList){
 			* @function: mouseoutReduceHandler 鼠标out的响应事件(reduce模式)
 			* @parameter: d, i  d3的原始的参数
 			*/
-			function mouseoutReduceHandler(d,i,svg_id){
+			function mouseoutReduceHandler(d,i,svg_id,cur_tree_index){
 				radialTip.hide(d);
 				var thisIndex = d.linear_index;
 				if (document.getElementById("highlight_self").checked){
@@ -3008,6 +3275,8 @@ var radial = function(dataList){
 				d3.selectAll(".line").remove();
 				d3.selectAll('.bar-class')
 					.classed("sibiling-highlight",false);
+				d3.selectAll('.bar-class')
+					.classed("cousin-highlight",false);
 				d3.selectAll('.bar-class')
 					.classed("father-highlight",false);
 				d3.selectAll('.bar-class')
@@ -3023,7 +3292,7 @@ var radial = function(dataList){
 				if(d._father != undefined){
 				   	d3.selectAll(".father-" + d._father.linear_index + 
 				   				  "subtree-" + d.nth_different_subtree +
-				   				  "rect_background_index-" + barcoded_tree_rectbackground_index)
+				   				  "rect_background_index-" + cur_tree_index)
 				   	.classed("same-sibling",false);
 				}
 			}
@@ -3166,12 +3435,8 @@ var radial = function(dataList){
 				}
 				GlobalFormerDepth = dep;
 
-				for (var i=0;i<tip_array.length;++i){
+				for(var i=0;i<tip_array.length;++i){
 					tip_array[i].hide();
-				}
-				for (var i=0;i<maintain_tooltip_display.length;++i)
-				{
-					maintain_tooltip_display[i]=false;
 				}
 			});
 			$("#state-change").unbind().click(function(){
@@ -3211,7 +3476,17 @@ var radial = function(dataList){
 		    }
 		    return Radial;
 	}
-}
+}	
+	/*
+	*@function: gotoFrontLayer：将元素放到界面显示的最前面 
+	*@parameter: dom传入的参数表示是svg上面append的element
+	*/
+	function gotoFrontLayer(dom){
+	    dom.appendTo(dom.parent());
+	}
+	function gotoBackLayer(dom){
+		dom.prependTo(dom.parent())
+	}
 	$('#switch-button').on('switchChange.bootstrapSwitch', function(event, state) {
 		  isReduce = !state;
 	});
@@ -3221,7 +3496,7 @@ var radial = function(dataList){
 	    var options_down = { direction: "down" };
 	    var options_right = { direction: "right" };
 	    if(state){
-	    	document.getElementById('radial-draw-svg').style.height = (height - 140) + 'px';	    	
+	    	document.getElementById('radial-draw-svg').style.height = (height - SET_OPERATION_GAP) + 'px';	    	
 	    }else{
 	    	document.getElementById('radial-draw-svg').style.height = height + 'px';
 	    }

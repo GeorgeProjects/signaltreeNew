@@ -846,14 +846,19 @@ function add_virtual_node(root)
 				}
 				//把这个作为小组的开头点的root标记上real
 				root.description="real";
-				virtualize(root_deepcopy);
+				//设置这个地方可以修改是否是对于层级缩略的节点进行缩略
+				var isRoot = true;
+				var notRoot = false;
+				virtualize(root_deepcopy, isRoot);
 				//传入一个结点后，把这个结点对应的子树全都变成虚拟的点
 				//具体做法是改description,name
 				//并设置size为0，trees_values数组全为none
-				function virtualize(root)
+				function virtualize(root, is_root)
 				{
 					root.description=virtual_node_description;
-					root.continuous_repeat_time = 1;
+					if(is_root){
+						root.continuous_repeat_time = 1;
+					}
 					//root.name=virtual_node_name;
 					if (typeof(root.size)!="undefined")
 					{
@@ -871,7 +876,8 @@ function add_virtual_node(root)
 					var cur_children_group_size=cur_children_group.length;
 					for (var i=0;i<cur_children_group_size;++i)
 					{
-						virtualize(root.children[i]);
+
+						virtualize(root.children[i], notRoot);
 					}
 				}
 

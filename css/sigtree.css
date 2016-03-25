@@ -15,6 +15,12 @@
 .text{
   font-size: 12px;
 }
+.bar-class{
+  z-index: 100;
+}
+.barcode-bg{
+  z-index: 10;
+}
 /* D3.tips */
 .d3-tip {
   line-height: 1.5em;
@@ -76,7 +82,7 @@
   left:0%;
   right:0%;
   bottom: 0%;
-  overflow: hidden;
+  overflow: auto;
 }
 
 #radial-depth-controller {
@@ -93,8 +99,7 @@
   border:2px solid #a0a0a0;
   position: absolute;
   /*start of change*/
-  top: 70%;
-  
+  top: 70%; 
   bottom: 0%;
   /*end of change*/
 }
@@ -166,7 +171,7 @@ path[class~=focus-highlight], circle[class~=focus-highlight], rect[class~=focus-
   background-color: rgb(240,240,240);
 }
 #slider-control-width{
-  width:20%;
+  width:18%;
   height:100%;
   margin-left: 0.5%;
   background-color: rgb(240,240,240);
@@ -177,13 +182,13 @@ path[class~=focus-highlight], circle[class~=focus-highlight], rect[class~=focus-
 }
 /*-----------------------------------------*/
 #slider-control-height{
-  width:20%;
+  width:18%;
   height: 100%;
   margin-left: 0.5%;
   background-color: rgb(240,240,240);
 }
 #other-control{
-  width:37%;
+  width:41%;
   height:100%;
   margin-left: 0.5%;
   background-color: rgb(240,240,240);
@@ -203,11 +208,11 @@ path[class~=focus-highlight], circle[class~=focus-highlight], rect[class~=focus-
 }
 #radial-draw-svg{
   width:100%;
-  height:95%;
+  height:100%;
 }
 #radial-draw-overflow{
   width:100%;
-  height:100%;
+  height:95%;
   overflow: auto;
 }
 #clientDropDown{
