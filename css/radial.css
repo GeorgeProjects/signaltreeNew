@@ -93,10 +93,12 @@
 }
 /*end of 提示框css*/
   rect[class~=cousin-highlight]{
-    fill:purple;
+    fill:lightblue;
+    opacity: 0.4;
   }
   rect[class~=sibiling-highlight]{
-    fill:lightblue;
+    fill:steelblue;
+    opacity: 0.4;
   }
   rect[class~=same-sibling]{
     fill:blue; 
@@ -119,10 +121,29 @@
   path[class~=father-highlight]{
     stroke:brown;
   }
-  rect[class~=slider-hover-0],rect[class~=slider-hover-1],
-  rect[class~=slider-hover-2],rect[class~=slider-hover-3],rect[class~=slider-hover-4]{
-    fill:rgb(166,97,26);
-    stroke:rgb(166,97,26);
+  rect[class~=slider-hover-0]{
+    fill:#000000;
+    stroke:#000000;
+    stroke-width:1.5px;
+  }
+  rect[class~=slider-hover-1]{
+    fill:#333333;
+    stroke:#333333;
+    stroke-width:1.5px;
+  }
+  rect[class~=slider-hover-2]{
+    fill:#555555;
+    stroke:#555555;
+    stroke-width:1.5px;
+  }
+  rect[class~=slider-hover-3]{
+    fill:#777777;
+    stroke:#777777;
+    stroke-width:1.5px;
+  }
+  rect[class~=slider-hover-4]{
+    fill:#aaaaaa;
+    stroke:#aaaaaa;
     stroke-width:1.5px;
   }
  /* {
@@ -194,6 +215,36 @@
 
 .removenode{
   stroke:black;
-  stroke-width:0.08px;
+  stroke-width:0.05px;
 }
-
+.center-circle{
+  fill:black;
+}
+.dim{
+  opacity: 0.1;
+}
+.link-node-highlight{
+  fill:black;
+}
+.line-link{
+  stroke: black;
+  stroke-width: 2.5px;
+}
+.pattern-bg-remove{
+  fill:white;
+}
+.hight-light-pattern{
+  fill: black;
+  stroke: black;
+  animation-name: highlight-animation;
+  animation-duration:1s;
+  animation-timing-function:linear;
+  animation-iteration-count:infinite;
+}
+@keyframes highlight-animation {
+    0% {}
+    50% {
+      stroke-width: 1.3px;
+    }
+    100% {}
+}  

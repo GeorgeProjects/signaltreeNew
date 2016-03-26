@@ -182,6 +182,9 @@ var radial = function(dataList){
 		linearlize(union_root,unionLinearTree);
 		addTreesValuesNumber(unionLinearTree);
 		addVirtualTreeValues(unionLinearTree);
+		addMinIndex(unionLinearTree);
+		changeVirtualFather(unionLinearTree);
+		addPatternIndex(unionLinearTree);
 
 		d3.selectAll('.index-rect').remove();
 		d3.selectAll('.index-text').remove();
@@ -203,6 +206,7 @@ var radial = function(dataList){
 			var Length = dataList.length - 1;
 			draw_barcode(i, radialSvgName, [i], NOTJUDGEAND, NOTJUDGEOR, i, NOTRESORT);
 		}
+		console.log(unionLinearTree);
 		//if(union_root.trees_values.length != curtreeindex+1)
 		//	console.log("2error!!")
 		//var selectionCheckArray = new Array();
@@ -522,6 +526,7 @@ var radial = function(dataList){
 				d3.selectAll('.barcode-bg-' + index + '-' + svg_id).remove();
 				var virtualBeginX = 0, virtualEndX = 0, virtualWidth = 0, virtualHeight = 0, virtualBeginY = 0;
 				var isNormal = true;
+				var patternId = 0;
 				for(var i = 0;i < unionLinearTree.length;i++){
 					var treeNode = unionLinearTree[i];
 					var treeNodeIndex = treeNode.linear_index;
@@ -533,30 +538,33 @@ var radial = function(dataList){
 					if(treeNode.description != 'virtual' && (!isNormal)){
 						virtualEndX = originNodeArray[i].x - 1;
 						virtualWidth = virtualEndX - virtualBeginX;
-						if(svg_id == radialSvgName){
+						if(svg_id == radialSvgName && virtualWidth != 0){
 							virtualBeginY = background_rect_record[index].y - 1;
 							virtualHeight = background_rect_record[index].height + 3;
 							appendNode = svg.append('rect')
 								.attr('class','barcode-bg-' + index + '-' + svg_id
 											 +' barcode-bg')
+								.attr('id', 'pattern-' + patternId + 'barcode-bg-' + index)
 								.attr('x',virtualBeginX)
 								.attr('y',virtualBeginY)
 								.attr('width',virtualWidth)
 								.attr('height',virtualHeight)
-								.attr('fill','#e0e0e0');
+								.attr('fill','#eeeeee');
+								patternId = patternId + 1;
 						}
 						//for(var j = 0;j < SET_OPERATION_NUM;j++){
-						if(svg_id == setOperationSvgName){
+						if(svg_id == setOperationSvgName && virtualWidth != 0){
 							virtualBeginY = rectY + (originRectHeight + verticalInterval) * index
 							virtualHeight = originRectHeight;
 							appendNode = setOperationSvg.append('rect')
 								.attr('class','barcode-bg-' + index + '-' + svg_id
 											+ ' barcode-bg')
+								.attr('id', 'pattern-' + patternId + 'barcode-bg-' + index)
 								.attr('x',virtualBeginX)
 								.attr('y',virtualBeginY)
 								.attr('width',virtualWidth)
 								.attr('height',virtualHeight)
-								.attr('fill','#e0e0e0');
+								.attr('fill','#eeeeee');
 						}
 						isNormal = true;
 					}
@@ -1191,13 +1199,13 @@ var radial = function(dataList){
 					.on("mouseover",function(d,i){
 						d3.select(this).classed("slider-hover-" + i,true);
 						var changeClass = "hover-depth-" + i;
-						d3.selectAll(".num-" + i).classed(changeClass,true);
+						//d3.selectAll(".num-" + i).classed(changeClass,true);
 						changePercentage(widthArray[i]);
 					})
 					.on("mouseout",function(d,i){
 						var changeClass = "hover-depth-" + i;
 						d3.select(this).classed("slider-hover-" + i,false);
-						d3.selectAll(".num-" + i).classed(changeClass,false);
+						//d3.selectAll(".num-" + i).classed(changeClass,false);
 						clearPercentage();
 					})
 					.call(drag);
@@ -2313,35 +2321,10 @@ var radial = function(dataList){
 				selection.enter()
 				.append('rect')
 				.attr('class',function(d,i){
-					var fatherIndex = -1;
-					if(d._father!=undefined){
-						fatherIndex = d._father.linear_index;
-					}
-					return  'bar-class' + 
-							' bar-id' + d.linear_index +
-							' bar-class-' + barcoded_tree_rectbackground_index + 
-						    ' num-' + d._depth + 'father-' + fatherIndex + "bg-" + barcoded_tree_rectbackground_index + 
-							" num-" + d._depth + '-' + barcoded_tree_rectbackground_index +
-							' num-' + d._depth + 
-							' father-' + fatherIndex + 
-							" father-" + fatherIndex + "subtree-" + d.nth_different_subtree +
-							" rect_background_index-" + barcoded_tree_rectbackground_index +
-							" class_end" + 
-							" " + d.route + "-bg-" + barcoded_tree_rectbackground_index +
-							" " + svg_id;
+					return classHandler(d,i,barcoded_tree_rectbackground_index);
 				})
 				.attr('id',function(d,i){
-					var id = 'bar-id' + d.linear_index +
-							 "rect_background_index-" + barcoded_tree_rectbackground_index + 
-							 "-" + svg_id;
-					var barId = 'bar-id' + d.linear_index;
-					//将continuous_repeat_time为2的节点存储下来，在存储的节点的基础上面append rect
-					if(d.continuous_repeat_time == 2){
-						if(repeat2Array.indexOf(barId) == -1){
-							repeat2Array.push(barId);
-						}
-					}
-					return id;
+					return idHandler(d,i,barcoded_tree_rectbackground_index);
 				})
 				.attr('x',function(d,i){
 					return originNodeArray[i].x;
@@ -2359,7 +2342,7 @@ var radial = function(dataList){
 					return fillHandler(d,i,real_tree_index,this);
 				})
 				.on('mouseover',function(d,i){
-					if(d3.select(this).attr("fill") == removeColor)//如果是虚拟结点，就不允许交互
+					if(d3.select(this).attr("fill") == removeColor || d3.select(this).classed('nonexisted'))//虚拟结点不允许交互
 					{
 						return;
 					}
@@ -2384,34 +2367,10 @@ var radial = function(dataList){
 				});
 				//--------------------------------
 				selection.attr('class',function(d,i){
-					var fatherIndex = -1;
-					if(d._father!=undefined){
-						fatherIndex = d._father.linear_index;
-					}
-					return  'bar-class' + 
-							' bar-id' + d.linear_index +
-							' bar-class-' + barcoded_tree_rectbackground_index + 
-						    ' num-' + d._depth + 'father-' + fatherIndex + "bg-" + barcoded_tree_rectbackground_index + 
-							" num-" + d._depth + '-' + barcoded_tree_rectbackground_index +
-							' num-' + d._depth + 
-							' father-' + fatherIndex + 
-							" father-" + fatherIndex + "subtree-" + d.nth_different_subtree +
-							" rect_background_index-" + barcoded_tree_rectbackground_index +
-							" class_end" + 
-							" " + d.route + "-bg-" + barcoded_tree_rectbackground_index + 
-							" " + svg_id;
+					return classHandler(d,i,barcoded_tree_rectbackground_index);
 				})
 				.attr('id',function(d,i){
-					var id = 'bar-id' + d.linear_index + "rect_background_index-" + barcoded_tree_rectbackground_index
-								+ '-' + svg_id;
-					var barId = 'bar-id' + d.linear_index;
-					//将continuous_repeat_time为2的节点存储下来，在存储的节点的基础上面append rect
-					if(d.continuous_repeat_time == 2){
-						if(repeat2Array.indexOf(barId) == -1){
-							repeat2Array.push(barId);
-						}
-					}
-					return id;
+					return idHandler(d,i,barcoded_tree_rectbackground_index);
 				})
 				.attr('x',function(d,i){
 					return originNodeArray[i].x;
@@ -2429,7 +2388,7 @@ var radial = function(dataList){
 					return fillHandler(d,i,real_tree_index,this);
 				})
 				.on('mouseover',function(d,i){
-					if(d3.select(this).attr("fill") == removeColor)//虚拟结点不允许交互
+					if(d3.select(this).attr("fill") == removeColor || d3.select(this).classed('nonexisted'))//虚拟结点不允许交互
 					{
 						return;
 					}
@@ -2444,7 +2403,6 @@ var radial = function(dataList){
 				    	var treeId = dataList[barcoded_tree_rectbackground_index].id;
 				   		ObserverManager.post("percentage", [0 ,-1, treeId]);
 				    }
-				    return radialTip.hide;
 				})
 				.on('click',function(d,i){
 					if(d3.select(this).attr("fill") == removeColor){
@@ -2462,6 +2420,7 @@ var radial = function(dataList){
 			function draw_reduced_barcoded_tree(linear_tree,cur_tree_index,real_tree_index, reduce_node_array)
 			{
 				reduceNodeArray = reduce_node_array;
+				console.log(reduceNodeArray);
 				draw_pattern_bg(reduceNodeArray, svg_id, cur_tree_index);
 				var isShow = true;
 				var nowDepth = -1;
@@ -2490,34 +2449,10 @@ var radial = function(dataList){
 				selection.enter()
 				.append('rect')
 				.attr('class',function(d,i){
-					var fatherIndex = -1;
-					if(d._father!=undefined){
-						fatherIndex = d._father.linear_index;
-					}
-					return 'bar-class' +
-						   ' bar-id' + d.linear_index +
-						   ' bar-class-' + barcoded_tree_rectbackground_index + 
-						   ' num-' + d._depth + 'father-' + fatherIndex + 'bg-' + barcoded_tree_rectbackground_index +
-						   " num-" + d._depth + '-' + barcoded_tree_rectbackground_index +
-						   ' num-' + d._depth + 
-						   ' father-' + fatherIndex + 
-						   " father-" + fatherIndex + "subtree-" + d.nth_different_subtree  + 
-						   " rect_background_index-" + barcoded_tree_rectbackground_index + 
-						   " class_end" + 
-						   " " + d.route + "-bg-" + barcoded_tree_rectbackground_index + 
-						   " " + svg_id;
+					return classHandler(d,i,barcoded_tree_rectbackground_index);
 				})
 				.attr('id',function(d,i){
-					var id = 'bar-id' + d.linear_index + "rect_background_index-" + barcoded_tree_rectbackground_index
-						+ '-' + svg_id;
-					//将continuous_repeat_time为2的节点存储下来，在存储的节点的基础上面append rect
-					var barId = 'bar-id' + d.linear_index;
-					if(d.continuous_repeat_time == 2){
-						if(repeat2Array.indexOf(barId) == -1){
-							repeat2Array.push(barId);
-						}
-					}
-					return id;
+					return idHandler(d,i,barcoded_tree_rectbackground_index);
 				})
 				.attr('x',function(d,i){
 					return reduceNodeArray[i].x;
@@ -2535,16 +2470,16 @@ var radial = function(dataList){
 					return fillHandler(d,i,real_tree_index,this);
 				})
 				.on('mouseover',function(d,i){
-					if(d3.select(this).attr("fill") == removeColor){
+					if(d3.select(this).attr("fill") == removeColor || d3.select(this).classed('nonexisted')){
 						return;
 					}
-					mouseoverReduceHandler(d, i, svg_id, cur_tree_index, this);
+					mouseoverHandler(d, i, svg_id, cur_tree_index, this);
 				})
 				.on('mouseout',function(d,i){
 					if(d3.select(this).attr("fill") == removeColor){
 						return;
 					}
-					mouseoutReduceHandler(d,i,svg_id,cur_tree_index);
+					mouseoutHandler(d,i,svg_id,cur_tree_index);
 				    if(d3.select(this).classed(radialSvgName)){
 				    	var treeId = dataList[barcoded_tree_rectbackground_index].id;
 				    	ObserverManager.post("percentage", [0 ,-1, treeId]);
@@ -2561,34 +2496,10 @@ var radial = function(dataList){
 				});
 				//----------------------------------
 				selection.attr('class',function(d,i){
-					var fatherIndex = -1;
-					if(d._father!=undefined){
-						fatherIndex = d._father.linear_index;
-					}
-					return 'bar-class' +
-						   ' bar-id' + d.linear_index +
-						   ' bar-class-' + barcoded_tree_rectbackground_index + 
-						   ' num-' + d._depth + 'father-' + fatherIndex + 'bg-' + barcoded_tree_rectbackground_index +
-						   ' num-' + d._depth + 
-						   " num-" + d._depth + '-' + barcoded_tree_rectbackground_index + 
-						   ' father-' + fatherIndex + 
-						   " father-" + fatherIndex + "subtree-" + d.nth_different_subtree  + 
-						   " rect_background_index-" + barcoded_tree_rectbackground_index + 
-						   " class_end" + 
-						   " " + d.route + "-bg-" + barcoded_tree_rectbackground_index + 
-						   " " + svg_id;
+					return classHandler(d,i,barcoded_tree_rectbackground_index);
 				})
 				.attr('id',function(d,i){
-					var id = 'bar-id' + d.linear_index + "rect_background_index-" + barcoded_tree_rectbackground_index
-						+ '-' + svg_id;
-					//将continuous_repeat_time为2的节点存储下来，在存储的节点的基础上面append rect
-					var barId = 'bar-id' + d.linear_index;
-					if(d.continuous_repeat_time == 2){
-						if(repeat2Array.indexOf(barId) == -1){
-							repeat2Array.push(barId);
-						}
-					}
-					return id;
+					return idHandler(d,i,barcoded_tree_rectbackground_index);
 				})
 				.attr('x',function(d,i){
 					return reduceNodeArray[i].x;
@@ -2606,22 +2517,20 @@ var radial = function(dataList){
 					return fillHandler(d,i,real_tree_index,this);
 				})
 				.on('mouseover',function(d,i){
-					if(d3.select(this).attr("fill") == removeColor){
+					if(d3.select(this).attr("fill") == removeColor || d3.select(this).classed('nonexisted')){
 						return;
 					}
-					mouseoverReduceHandler(d,i,svg_id,cur_tree_index,this);
-				    return radialTip.show;
+					mouseoverHandler(d,i,svg_id,cur_tree_index,this);
 				})
 				.on('mouseout',function(d,i){
 					if(d3.select(this).attr("fill") == removeColor){
 						return;
 					}
-					mouseoutReduceHandler(d,i,svg_id,cur_tree_index);
+					mouseoutHandler(d,i,svg_id,cur_tree_index);
 				    if(d3.select(this).classed(radialSvgName)){
 				    	var treeId = dataList[barcoded_tree_rectbackground_index].id;
 				    	ObserverManager.post("percentage", [0 ,-1, treeId]);
 				    }
-				    return radialTip.hide;
 				})
 				.on('click',function(d,i){
 					if(d3.select(this).attr("fill") == removeColor){
@@ -2636,6 +2545,51 @@ var radial = function(dataList){
 				selection.exit().remove();
 				//add_lose_repeat(barcoded_tree_rectbackground_index);
 				//draw_link(barcoded_tree_biasy,barcoded_tree_rectbackground_index);
+			}
+			/*
+			* @function: classHandler 返回某一节点的class值
+			* @parameter: d, i, tree_index表示的是绘制的是哪一个barcode
+			*/
+			function classHandler(d,i,tree_index){
+				var mode = 'existed';
+				if(d.description == 'virtual'){
+					mode = 'nonexisted'
+				}
+				var treeIndex = tree_index;
+				var fatherIndex = -1;
+				if(d._father!=undefined){
+					fatherIndex = d._father.linear_index;
+				}
+				return  'bar-class' + 
+						' bar-id' + d.linear_index +
+						' bar-class-' + treeIndex + 
+					    ' num-' + d._depth + 'father-' + fatherIndex + "bg-" + treeIndex + 
+						" num-" + d._depth + '-' + treeIndex +
+						' num-' + d._depth + 
+						' father-' + fatherIndex + "rect_background_index-" + treeIndex + 
+						" father-" + fatherIndex + "subtree-" + d.nth_different_subtree + "rect_background_index-" + treeIndex + 
+						" rect_background_index-" + treeIndex +
+						" class_end" + 
+						" " + d.route + "-bg-" + treeIndex + 
+						" " + svg_id +
+						' ' + mode;
+			}
+			/*
+			* @function: idHandler 返回某一节点的id值
+			* @parameter: d, i, tree_index表示的是绘制的是哪一个barcode
+			*/
+			function idHandler(d,i,tree_index){
+				var treeIndex = tree_index;
+				var id = 'bar-id' + d.linear_index + "rect_background_index-" + treeIndex
+						+ '-' + svg_id;
+				//将continuous_repeat_time为2的节点存储下来，在存储的节点的基础上面append rect
+				var barId = 'bar-id' + d.linear_index;
+				if(d.continuous_repeat_time == 2){
+					if(repeat2Array.indexOf(barId) == -1){
+						repeat2Array.push(barId);
+					}
+				}
+				return id;
 			}
 			/*
 			* @function: drawIndex绘制barcode tree 前面的index rect以及index
@@ -2958,156 +2912,129 @@ var radial = function(dataList){
 			*	cur_tree_index是树在当前的图中的编号，而不是在histogram中的编号
 			*/
 			function mouseoverHandler(d,i,svg_id,cur_tree_index,this_element){
+				var svg = d3.select("#" + svg_id);
+				var curTreeIndex = cur_tree_index;
 				//与histogram的linking
 				if(d3.select(this_element).classed(radialSvgName)){
 					var treeId = dataList[barcoded_tree_rectbackground_index].id;
-					var cur_tree_sumvalue=linear_tree[0].trees_values[cur_tree_index+1];
-					var cur_node_value=d.trees_values[cur_tree_index+1];
+					var cur_tree_sumvalue = linear_tree[0].trees_values[cur_tree_index+1];
+					var cur_node_value = d.trees_values[cur_tree_index+1];
 					//发出当前的树节点的流量占当前的树的总流量的比例
 					ObserverManager.post("percentage",[cur_node_value/cur_tree_sumvalue, d._depth, treeId]);
 				}
+				//显示节点的tooltip
 				radialTip.show(d);
-				var svg = d3.select("#" + svg_id);
-
-				var fatherIndex = -1;
-				var linkHeight = rectHeight/2;
+				//高亮同层节点
+				if(document.getElementById('highlight_cousin').checked){
+					var cousinNode = svg.selectAll('.num-' + d._depth + '-' + cur_tree_index)[0];
+					for(var j = 0;j < cousinNode.length;j++){
+						var thisNode = d3.select(cousinNode[j]);
+						if(thisNode.attr('fill') != removeColor && !thisNode.classed('nonexisted')){
+							thisNode.classed('cousin-highlight', true);
+						}
+					}
+				}
+				//高亮具有相同父亲的节点
+				if(document.getElementById('highlight_sibling').checked){
+				   	if(d._father!=undefined){
+						var siblingNode = svg.selectAll(".father-" + d._father.linear_index +
+									  "rect_background_index-" + cur_tree_index)[0];
+						for(var j = 0;j < siblingNode.length;j++){
+							var thisNode = d3.select(siblingNode[j]);
+							if(thisNode.attr('fill') != removeColor  && !thisNode.classed('nonexisted')){
+								thisNode.classed('cousin-highlight',false);
+								thisNode.classed("sibiling-highlight",true);
+							}
+						}
+					}
+				}			
 				var thisIndex = d.linear_index;
-				var bgRectInfo = background_rect_record[cur_tree_index];
-				/*if (document.getElementById("highlight_self").checked){
-					var thisIndexNodes = d3.selectAll('.bar-id' + thisIndex)[0];
-					for(var j = 0;j < thisIndexNodes.length;j++){
-						var id = thisIndexNodes[j].id;
-						if(d3.select("#" + id).attr('fill') != removeColor){
-							d3.select("#" + id).classed('this-highlight',true);
-						}
-					}
-				}*/
-				//高亮从根节点到现在的节点的路径
+				var linearTreeEle = linear_tree[thisIndex];
 				svg.selectAll('.bar-class-' + cur_tree_index).classed('dim',true);
-				//高亮self节点
-				var thisWidth = +svg.select('#bar-id' + thisIndex + "rect_background_index-" + cur_tree_index + "-" + svg_id)
-						.attr("width");
-				var thisX = +svg.select('#bar-id' + thisIndex + "rect_background_index-" + cur_tree_index + "-" + svg_id)
-						.attr("x") + thisWidth / 2;
-				var thisY = +svg.select('#bar-id' + thisIndex + "rect_background_index-" + cur_tree_index + "-" + svg_id)
-						.attr("y");
-				var thisHeight = +svg.select('#bar-id' + thisIndex + "rect_background_index-" + cur_tree_index + "-" + svg_id)
-						.attr("height");
-				//highlight sibling
-				if(d._father!=undefined){
-					fatherIndex = d._father.linear_index;
-					father = d._father;
-					sibling_group=father.children;
-					//if (document.getElementById("highlight_sibling").checked)
-					//{
-						if(sibling_group!=undefined){
-							for (var j=0;j<sibling_group.length;++j)
-							{
-								var cur_sibling=sibling_group[j];
-								var siblingId=cur_sibling.linear_index;
-								svg.select('#bar-id' + siblingId + "rect_background_index-" + cur_tree_index + "-" + svg_id)
-										.classed("sibiling-highlight",true);
-							}
+				//分别得到自己节点，上溯根节点的父亲节点
+				var thisElement = svg.select('#bar-id' + thisIndex + "rect_background_index-" + cur_tree_index + "-" + svg_id);
+				thisElement.classed('sibiling-highlight',false);
+				thisElement.classed('cousin-highlight',false);
+				var linkArray = [];
+				if(($("#state-change").hasClass("active")) && (linearTreeEle.continuous_repeat_time >= 2)){
+					thisIndex = linearTreeEle.pattern_index;
+					thisElement = svg.select('#bar-id' + thisIndex + "rect_background_index-" + cur_tree_index + "-" + svg_id);
+				}
+				linkArray.push(thisElement);
+				linkFuncTop(thisIndex, linkArray, linear_tree, svg_id);
+				//linkFuncBottom(thisIndex, linkArray, cur_tree_index, linear_tree, svg_id);
+				for(var j = 0;j < linkArray.length;j++){
+					linkArray[j].classed('dim',false);
+					linkArray[j].classed('cousin-highlight',false);
+					linkArray[j].classed('sibiling-highlight',false);
+					linkArray[j].classed('link-node-highlight',true);
+				}
+				if($("#state-change").hasClass("active")){
+					svg.selectAll('.barcode-bg-' + index + '-' + svg_id).classed('pattern-bg-remove',true);
+				}
+				d3.select(this_element).classed('link-node-highlight',true);
+				d3.select(this_element).classed('dim',false);
+				if(($("#state-change").hasClass("active")) && linearTreeEle.pattern_index != 'none' 
+						&& linearTreeEle.pattern_index != undefined){
+					//将pattern的虚拟节点的所有节点进行高亮
+					for(var j = +linearTreeEle.pattern_index;;j++){
+						if(linear_tree[j].description != 'virtual'){
+							break;
 						}
-					//}
-				}
-				//hightlight cousin
-				if (document.getElementById("highlight_cousin").checked)
-				{
-					svg.selectAll('.num-' + d._depth + '-' + cur_tree_index).classed("cousin-highlight",true);		
-				}
-				//-------------highlight parent node-----------------
-				var fatherId = 0;
-				if(d._father!=undefined){
-					fatherId = d._father.linear_index;
-				}else{
-					fatherId = -1;
-				}
-				/*if (document.getElementById("highlight_father").checked && fatherId != -1)
-				{
-					svg.select('#bar-id' + fatherId + "rect_background_index-" + cur_tree_index + "-" + svg_id)
-						.classed("father-highlight",true);
-					var fatherWidth = +svg.select('#bar-id' + fatherId + "rect_background_index-" + cur_tree_index + "-" + svg_id)
-						.attr("width");
-					var fatherX = +svg.select('#bar-id' + fatherId + "rect_background_index-" + cur_tree_index + "-" + svg_id)
-						.attr("x") + fatherWidth / 2;
-					var fatherY = +svg.select('#bar-id' + fatherId + "rect_background_index-" + cur_tree_index + "-" + svg_id)
-						.attr("y");
-					var fatherHeight = +svg.select('#bar-id' + fatherId + "rect_background_index-" + cur_tree_index + "-" + svg_id)
-						.attr("height");
-					var radius = (thisX - fatherX)/2;
-					var line = d3.svg.line.radial()
-						.interpolate("basis")
-						.tension(0)
-						.radius(radius)
-						.angle(function(d, i) { return angle(i); });
-					var rectLink =	"M" + (-radius) + "," + 0 +
-						"L" + (-radius)  + "," + linkHeight + 
-						"L" + (radius) + "," + linkHeight +
-						"L" + (radius) + "," + 0;
-					if(thisWidth != 0 && fatherWidth != 0){
-			   			svg.append("path")
-					   	.datum(d3.range(points))
-						.attr("class", "line " + "bg-" + cur_tree_index + "f-" + fatherId 
-			    				+ " bg-" + cur_tree_index + "c-" + thisIndex 
-								+ " arc_background_index-" + cur_tree_index
-								+ " class_end"
-			    		)
-			    		.attr('id','path-f' + fatherId +'-c-'+ thisIndex)
-			    		.attr("d", rectLink)
-			    		.attr("transform", "translate(" + (fatherX + radius) + ", " + 
-			    					(fatherY + fatherHeight) + ")");
+						console.log(svg.select('#bar-id' + j + "rect_background_index-" + cur_tree_index + "-" + svg_id));
+						svg.select('#bar-id' + j + "rect_background_index-" + cur_tree_index + "-" + svg_id)
+							.classed('dim',false);
+						svg.select('#bar-id' + j + "rect_background_index-" + cur_tree_index + "-" + svg_id)
+							.classed('link-node-highlight',true);//link-node-highlight
 					}
-				}*/
-				var children = [];
-				if(d.children!=undefined){
-					children = d.children;
+					//将barcode的背景去除
+					svg.selectAll('.barcode-bg-' + index + '-' + svg_id).classed('pattern-bg-remove',true);
 				}
-				/*if(document.getElementById("highlight_children").checked)
-				{
-					for(var i = 0;i < children.length;i++){
-						var childId = children[i].linear_index;
-						var isExist = svg.select('#bar-id' + childId  + "rect_background_index-" + cur_tree_index + "-" + svg_id)
-							.attr("fill") != removeColor;
-						if(isExist){
-							svg.select('#bar-id' + childId + "rect_background_index-" + cur_tree_index + "-" + svg_id)
-								.classed("children-highlight",true);
-							var childWidth = +svg.select('#bar-id' + childId + "rect_background_index-" + cur_tree_index + "-" + svg_id)
-								.attr("width");
-							var childX = +svg.select('#bar-id' + childId + "rect_background_index-" + cur_tree_index + "-" + svg_id)
-								.attr("x") + childWidth / 2;
-							var radius = (childX - thisX) / 2;
-							var line = d3.svg.line.radial()
-								.interpolate("basis")
-								.tension(0)
-								.radius(radius)
-								.angle(function(d, i) { return angle(i); });
-							var rectLink =	"M" + (-radius) + "," + 0 +
-								"L" + (-radius)  + "," + linkHeight + 
-								"L" + (radius) + "," + linkHeight +
-								"L" + (radius) + "," + 0;
-							if(thisWidth != 0 && childWidth != 0){
-								svg.append("path")
-							   	.datum(d3.range(points))
-								.attr("class", "line " + "bg-" + cur_tree_index + "f-" + thisIndex 
-					    				+ " bg-" + cur_tree_index + "c-" + childId 
-										+ " arc_background_index-" + cur_tree_index
-										+ " class_end"
-					    		)
-					    		.attr('id','path-f' + fatherId +'-c-'+ thisIndex)
-					    		.attr("d", rectLink)
-					    		.attr("transform", "translate(" + (thisX + radius) + ", " + 
-					    					(thisY + thisHeight) + ")");
-							}
+				draw_link(linkArray, svg_id);
+				/*
+				* @linkFuncTop: 获取从根节点到某个节点路径上面的节点
+				* @parameter: this_index 表示的计算的节点的index值， link_array 表示的是存储的节点的数组
+				*/
+				function linkFuncTop(this_index, link_array, linear_tree, svg_id){
+					var svg = d3.select("#" + svg_id);
+					var thisIndex = this_index;
+					var linkArray = link_array;
+					var thisNode = linear_tree[thisIndex];
+					if(thisNode._father != undefined){
+						var fatherIndex = thisNode._father.linear_index;
+						var fatherElement = svg.select('#bar-id' + fatherIndex + 'rect_background_index-' + cur_tree_index + '-' + svg_id);
+						linkArray.push(fatherElement);
+						linkFuncTop(fatherIndex, linkArray, linear_tree, svg_id);
+					}
+					return;
+				}
+				/*
+				* @linkFuncBottom: 获取从某个节点到最低层次的路径上面的节点，对于上面的方法得到的数组进行补充
+				* @parameter: this_index 表示要计算的中心节点的index值， link_array 表示的是存储的节点的数组
+				*/
+				function linkFuncBottom(this_index, link_array, cur_tree_index, linear_tree, svg_id){
+					var svg = d3.select("#" + svg_id);
+					var thisIndex = this_index;
+					var linkArray = link_array;
+					var curTreeIndex = cur_tree_index;
+					var thisNode = linear_tree[thisIndex];
+					var childIndex = 0;
+					if(thisNode.children != undefined){
+						if($("#state-change").hasClass("active")){
+							childIndex = thisNode.children[0].linear_index;
+						}else{
+							/*if(thisNode.children[0].description == 'virtual'){
+								childIndex = thisNode.children[1].linear_index;
+							}else{
+								childIndex = thisNode.children[0].linear_index;
+							}*/
+							childIndex = thisNode.min_index_array[curTreeIndex + 1];
 						}
-					}		
-				}	*/	
-			   if(d._father!=undefined){
-					svg.selectAll(".father-" + d._father.linear_index +
-								  "subtree-" + d.nth_different_subtree + 
-								  "rect_background_index-" + cur_tree_index)
-						.classed("same-sibling",true);
-				} 				
+						var childElement = svg.select('#bar-id' + childIndex + 'rect_background_index-' + cur_tree_index + '-' + svg_id);
+						linkArray.push(childElement);
+						linkFuncBottom(childIndex, linkArray, curTreeIndex, linear_tree, svg_id);
+					}
+				}	
 			}
 			/*
 			* @function: mouseoutHandler 鼠标hover离开的响应事件(origin模式)
@@ -3116,253 +3043,59 @@ var radial = function(dataList){
 			function mouseoutHandler(d,i,svg_id,cur_tree_index){
 				radialTip.hide(d);
 				d3.selectAll('.bar-class-' + cur_tree_index).classed('dim',false);
+				d3.selectAll('.line').remove();
 				var thisIndex = d.linear_index;
-				if (document.getElementById("highlight_self").checked){
-					d3.selectAll('.bar-id' + thisIndex).classed("this-highlight",true);
-				}
-				d3.selectAll(".line").remove();
+
 				d3.selectAll('.bar-class')
 				.classed("sibiling-highlight",false);
 
 				d3.selectAll('.bar-class')
+				.classed('link-node-highlight',false);
+
+				d3.selectAll('.bar-class')
+				.classed('hight-light-pattern',false);
+				
+				d3.selectAll('.bar-class')
 				.classed("cousin-highlight",false);
 
-				d3.selectAll('.bar-class')
-				.classed("father-highlight",false);
-
-				d3.selectAll('.bar-class')
-				.classed("children-highlight",false);
-
-				d3.selectAll('.bar-class')
-				.classed("this-highlight",false);
-
-				d3.selectAll('path')
-				.classed('children-highlight',false);
-
-				d3.selectAll('path')
-				.classed('path-highlight',false);
-
-			   	d3.selectAll('path')
-				.classed('father-highlight',false);
-				if(d._father!=undefined){
-					d3.selectAll(".father-" + d._father.linear_index + 
-								  "subtree-" + d.nth_different_subtree + 
-								  "rect_background_index-" + barcoded_tree_rectbackground_index)
-						.classed("same-sibling",false);
-				}
+				d3.selectAll('.barcode-bg')
+				.classed("pattern-bg-remove",false);
 			}
 			/*
-			* @function: mouseoverReduceHandler 鼠标hover的响应事件(reduce模式)
-			* @parameter: d, i d3的原始的参数
+			* @function: drawLink 将传递的节点的中心连接起来，并且在传递的节点的中心增加圆
+			* @parameter: 传递的参数是element的数组
 			*/
-			function mouseoverReduceHandler(d,i,svg_id,cur_tree_index,this_element){
-				//与histogram的linking
-				if(d3.select(this_element).classed(radialSvgName)){
-					var treeId = dataList[barcoded_tree_rectbackground_index].id;
-					var cur_tree_sumvalue=linear_tree[0].trees_values[cur_tree_index+1];
-					var cur_node_value=d.trees_values[cur_tree_index+1];
-					//发出当前的树节点的流量占当前的树的总流量的比例
-					ObserverManager.post("percentage",[cur_node_value/cur_tree_sumvalue, d._depth, treeId]);
-				}
-				var svg = d3.select("#" + svg_id);
-				svg.selectAll('.bar-class-' + cur_tree_index).classed('dim',true);
-				radialTip.show(d);
-				var fatherIndex = -1;
-				var thisIndex = d.linear_index;
-				var linkHeight = rectHeight / 2;
-				var bgRectInfo = background_rect_record[cur_tree_index];
-				if (document.getElementById("highlight_self").checked){
-					var thisIndexNodes = d3.selectAll('.bar-id' + thisIndex)[0];
-					for(var j = 0;j < thisIndexNodes.length;j++){
-						var id = thisIndexNodes[j].id;
-						if(d3.select("#" + id).attr('fill') != removeColor){
-							d3.select("#" + id).classed('this-highlight',true);
-						}
+			function draw_link(element_array, svg_id){
+				var lineLink = '';
+				var formerX = 0;
+				var svgId = svg_id;
+				var svg = d3.select('#' + svgId);
+				var lineGroup = svg.append('g').attr('class','line');
+				for(var i = 0;i < element_array.length;i++){
+					var element = element_array[i];
+					var thisWidth = +element.attr("width");
+					var thisX = +element.attr("x");
+					var thisY = +element.attr("y");
+					var thisHeight = +element.attr("height");
+					var thisCircleX = thisX + thisWidth / 2;
+					var thisCircleY = thisY + thisHeight / 2;
+					var thisCircleR = thisWidth / 4;
+					var disX = thisX - formerX;
+					lineGroup.append('circle')
+						.attr('class','center-circle')
+						.attr('cx',thisCircleX)
+						.attr('cy',thisCircleY)
+						.attr('r',thisCircleR);
+					if(i == 0){
+						lineLink = lineLink + 'M' + thisCircleX + ',' + thisCircleY;
+					}else{
+						lineLink = lineLink + 'L' + thisCircleX + ',' + thisCircleY;
 					}
 				}
-				var thisWidth = +svg.select('#bar-id' + thisIndex + "rect_background_index-" + cur_tree_index + "-" + svg_id)
-						.attr("width");
-				var thisX = +svg.select('#bar-id' + thisIndex + "rect_background_index-" + cur_tree_index + "-" + svg_id)
-						.attr("x") + thisWidth / 2;
-				var thisY = +svg.select('#bar-id' + thisIndex + "rect_background_index-" + cur_tree_index + "-" + svg_id)
-						.attr("y");
-				var thisHeight = +svg.select('#bar-id' + thisIndex + "rect_background_index-" + cur_tree_index + "-" + svg_id)
-						.attr("height");
-				if(d._father!=undefined){
-					/*fatherIndex = d._father.linear_index;
-					svg.selectAll('.num-' + d._depth + 'father-' + fatherIndex + 'bg-' + barcoded_tree_rectbackground_index)
-					.classed("sibiling-highlight",true);*/
-					father = d._father;
-					sibling_group=father.children;
-					if (document.getElementById("highlight_sibling").checked && sibling_group != undefined)
-					{
-						for (var j=0;j<sibling_group.length;++j)
-						{
-							var cur_sibling=sibling_group[j];
-							var siblingId=cur_sibling.linear_index;
-							svg.select('#bar-id' + siblingId + "rect_background_index-" + cur_tree_index + "-" + svg_id)
-									.classed("sibiling-highlight",true);
-						}
-					}
-				}
-				//hightlight cousin
-				if (document.getElementById("highlight_cousin").checked)
-				{
-					svg.selectAll('.num-' + d._depth + '-' + cur_tree_index).classed("cousin-highlight",true);						    
-					/*traverse_highlight_cousin(svg,d._depth,linear_tree[0],cur_tree_index)
-					function traverse_highlight_cousin(svg,depth,root,cur_tree_index)
-					{
-						if (root._depth>depth)
-						{
-							return;
-						}
-						if (root._depth==depth)//达到目标层了
-						{
-							
-								svg.selectAll('#bar-id' + root.linear_index + "rect_background_index-" + cur_tree_index)
-											.classed("cousin-highlight",true);
-							
-						}
-						else
-						{
-							var cur_children_group=root.children;
-							if (typeof(cur_children_group)!="undefined")
-							{
-								for (var i=0;i<cur_children_group.length;++i)
-								{
-									traverse_highlight_cousin(svg,depth,cur_children_group[i],cur_tree_index)
-								}
-							}
-						}
-					}*/
-				}
-				// 高亮父亲节点
-				var fatherId = 0;
-				if(d._father!=undefined){
-					fatherId = d._father.linear_index;
-				}else{
-					fatherId = -1;
-				}
-				if (document.getElementById("highlight_father").checked && fatherId != -1)
-				{
-					svg.selectAll('#bar-id' + fatherId  + "rect_background_index-" + cur_tree_index + "-" + svg_id)
-						.classed("father-highlight",true);
-					var fatherWidth = +svg.select('#bar-id' + fatherId + "rect_background_index-" + cur_tree_index + "-" + svg_id)
-						.attr("width");
-					var fatherX = +svg.select('#bar-id' + fatherId + "rect_background_index-" + cur_tree_index + "-" + svg_id)
-						.attr("x") + fatherWidth / 2;
-					var fatherHeight = +svg.select('#bar-id' + fatherId + "rect_background_index-" + cur_tree_index + "-" + svg_id)
-						.attr("height");
-					var fatherY = +svg.select('#bar-id' + fatherId + "rect_background_index-" + cur_tree_index + "-" + svg_id)
-						.attr("y");
-					var radius = (thisX - fatherX)/2;
-					var line = d3.svg.line.radial()
-						.interpolate("basis")
-						.tension(0)
-						.radius(radius)
-						.angle(function(d, i) { return angle(i); });
-					var rectLink =	"M" + (-radius) + "," + 0 +
-						"L" + (-radius)  + "," + linkHeight + 
-						"L" + (radius) + "," + linkHeight +
-						"L" + (radius) + "," + 0;
-					if(thisWidth != 0 && fatherWidth != 0){
-			   			svg.append("path")
-					   	.datum(d3.range(points))
-						.attr("class", "line " + "bg-" + cur_tree_index + "f-" + fatherId 
-			    				+ " bg-" + cur_tree_index + "c-" + thisIndex 
-								+ " arc_background_index-" + cur_tree_index
-								+ " class_end"
-			    		)
-			    		.attr('id','path-f' + fatherId +'-c-'+ thisIndex)
-			    		.attr("d", rectLink)
-			    		.attr("transform", "translate(" + (fatherX + radius) + ", " + 
-			    					(fatherHeight + fatherY) + ")");
-					}
-				}
-				var children = [];
-				if(d.children!=undefined){
-					children = d.children;
-				}
-				if (document.getElementById("highlight_children").checked)
-				{
-					for(var i = 0;i < children.length;i++){
-						var childId = children[i].linear_index;
-						var isExist = svg.select('#bar-id' + childId  + "rect_background_index-" + cur_tree_index + "-" + svg_id)
-							.attr("fill") != removeColor;
-						if(isExist){
-							svg.selectAll('#bar-id' + childId  + "rect_background_index-" + cur_tree_index + "-" + svg_id)
-								.classed("children-highlight",true);
-							var childWidth = +svg.select('#bar-id' + childId + "rect_background_index-" + cur_tree_index + "-" + svg_id)
-								.attr("width");
-							var childX = +svg.select('#bar-id' + childId + "rect_background_index-" + cur_tree_index + "-" + svg_id)
-								.attr("x") + childWidth / 2;
-							var radius = (childX - thisX) / 2;
-							var line = d3.svg.line.radial()
-								.interpolate("basis")
-								.tension(0)
-								.radius(radius)
-								.angle(function(d, i) { return angle(i); });
-							var rectLink =	"M" + (-radius) + "," + 0 +
-								"L" + (-radius)  + "," + linkHeight + 
-								"L" + (radius) + "," + linkHeight +
-								"L" + (radius) + "," + 0;
-							if(thisWidth != 0 && childWidth != 0){
-								svg.append("path")
-							   	.datum(d3.range(points))
-								.attr("class", "line " + "bg-" + cur_tree_index + "f-" + thisIndex 
-					    				+ " bg-" + cur_tree_index + "c-" + childId 
-										+ " arc_background_index-" + cur_tree_index
-										+ " class_end"
-					    		)
-					    		.attr('id','path-f' + fatherId +'-c-'+ thisIndex)
-					    		.attr("d", rectLink)
-					    		.attr("transform", "translate(" + (thisX + radius) + ", " + 
-					    					(thisY + thisHeight) + ")");
-							}
-						}	
-					}
-				}
-				if(d._father!=undefined){
-				   	svg.selectAll(".father-" + d._father.linear_index +
-				   				  "subtree-" + d.nth_different_subtree + 
-				   				  "rect_background_index-" + cur_tree_index)
-				   	.classed("same-sibling",true);
-				}
-			}
-			/*
-			* @function: mouseoutReduceHandler 鼠标out的响应事件(reduce模式)
-			* @parameter: d, i  d3的原始的参数
-			*/
-			function mouseoutReduceHandler(d,i,svg_id,cur_tree_index){
-				radialTip.hide(d);
-				d3.selectAll('.bar-class-' + cur_tree_index).classed('dim',false);
-				var thisIndex = d.linear_index;
-				if (document.getElementById("highlight_self").checked){
-					d3.selectAll('.bar-id' + thisIndex).classed("this-highlight",true);
-				}
-				d3.selectAll(".line").remove();
-				d3.selectAll('.bar-class')
-					.classed("sibiling-highlight",false);
-				d3.selectAll('.bar-class')
-					.classed("cousin-highlight",false);
-				d3.selectAll('.bar-class')
-					.classed("father-highlight",false);
-				d3.selectAll('.bar-class')
-					.classed("children-highlight",false);
-				d3.selectAll('.bar-class')
-					.classed("this-highlight",false);
-				d3.selectAll('path')
-					.classed('path-highlight',false);
-				d3.selectAll('path')
-				   	.classed('children-highlight',false);
-			    d3.selectAll('path')
-				   	.classed('father-highlight',false);
-				if(d._father != undefined){
-				   	d3.selectAll(".father-" + d._father.linear_index + 
-				   				  "subtree-" + d.nth_different_subtree +
-				   				  "rect_background_index-" + cur_tree_index)
-				   	.classed("same-sibling",false);
-				}
+				lineGroup.append("path")
+			   	.datum(d3.range(points))
+				.attr("class", 'line-link')
+		   		.attr("d", lineLink);
 			}
 			//传入三角形的位置，然后将三角形绘制在对应的位置上
 			function draw_adjust_button(desObject, index)

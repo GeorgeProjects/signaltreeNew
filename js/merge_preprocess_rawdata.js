@@ -793,7 +793,7 @@ function add_virtual_node(root)
 				cur_target_node_L0.trees_values=_.clone(root.trees_values)
 				
 				var cur_source_node_L0=root;
-				if (typeof(cur_source_node_L0.children)!="undefined")
+				if (typeof(cur_source_node_L0.children) != "undefined")
 				{
 					cur_target_node_L0.children=[];
 					for (var i=0;i<cur_source_node_L0.children.length;++i)
@@ -804,7 +804,7 @@ function add_virtual_node(root)
 						var cur_target_node_L1=cur_target_node_L0.children[i];
 						cur_target_node_L1.trees_values=_.clone(cur_source_node_L1.trees_values);
 
-						if (typeof(cur_source_node_L1.children)!="undefined")
+						if (typeof(cur_source_node_L1.children) != "undefined")
 						{
 							cur_target_node_L1.children=[];
 							for (var j=0;j<cur_source_node_L1.children.length;++j)
@@ -815,7 +815,7 @@ function add_virtual_node(root)
 								var cur_target_node_L2=cur_target_node_L1.children[j];
 								cur_target_node_L2.trees_values=_.clone(cur_source_node_L2.trees_values);
 								
-								if (typeof(cur_source_node_L2.children)!="undefined")
+								if (typeof(cur_source_node_L2.children) != "undefined")
 								{
 									cur_target_node_L2.children=[];
 									for (var k=0;k<cur_source_node_L2.children.length;++k)
@@ -826,7 +826,7 @@ function add_virtual_node(root)
 										var cur_target_node_L3=cur_target_node_L2.children[k];
 										cur_target_node_L3.trees_values=_.clone(cur_source_node_L3.trees_values);
 										
-										if (typeof(cur_source_node_L3.children)!="undefined")
+										if (typeof(cur_source_node_L3.children) != "undefined")
 										{
 											cur_target_node_L3.children=[];
 											for (var l=0;l<cur_source_node_L3.children.length;++l)
@@ -868,7 +868,6 @@ function add_virtual_node(root)
 					{
 						root.trees_values[i]="none";
 					}
-
 					//对每个子递归计算
 					var cur_children_group=root.children;
 					if (typeof(root.children)=="undefined")
@@ -880,7 +879,6 @@ function add_virtual_node(root)
 						virtualize(root.children[i], notRoot);
 					}
 				}
-
 				root_sibling_group.splice(root_sibling_group_index,0,root_deepcopy)
 			}
 		}	
@@ -968,4 +966,89 @@ function addVirtualTreeValues(linear_tree){
 		}
 	}
 }
-
+/*
+* @function: changeVirtualFather 将virtual节点的_father属性变成后面第二个节点的_father属性
+* @parameter: 传入的参数是unionLinearTree
+*/
+function changeVirtualFather(linear_tree){
+	var linearTree = linear_tree;
+	var defaultDepth = 10;
+	var virtualNode = null;
+	var virtualDepth = -1;
+	for(var i = 0;i < linear_tree.length;i++){
+		var treeNode = linear_tree[i];
+		var treeNodeDep = +treeNode._depth;
+		treeNode.patternIndex = 'none';
+		//找到合适的virtual节点，然后改变这个virtual节点的_father属性
+		if(treeNode.description == 'virtual' && treeNodeDep <= defaultDepth){
+			virtualNode = linear_tree[i];
+			virtualDepth = treeNode._depth;
+			defaultDepth = +virtualDepth;
+		}
+		if(treeNode._depth == virtualDepth && treeNode.continuous_repeat_time == 2 && treeNode.description != 'virtual'){
+			virtualNode._father = treeNode._father;
+			defaultDepth = 10;
+		}
+	}
+}
+/*
+* @function: addPatternIndex 将patternIndex加入到每个重复的节点的属性中
+* @parameter: 传入的参数是unionLinearTree
+*/
+function addPatternIndex(linear_tree){
+	var linearTree = linear_tree;
+	var defaultDepth = 10;
+	var virtualNode = null;
+	var virtualDepth = -1;
+	var patternId = 0;
+	for(var i = 0;i < linear_tree.length;i++){
+		var treeNode = linear_tree[i];
+		var treeNodeDep = +treeNode._depth;
+		treeNode.patternIndex = 'none';
+		//找到合适的virtual节点，然后改变这个virtual节点的_father属性
+		if(treeNode.description == 'virtual' && treeNodeDep <= defaultDepth){
+			virtualNode = linear_tree[i];
+			virtualDepth = treeNode._depth;
+			defaultDepth = +virtualDepth;
+			patternId = patternId + 1;
+		}
+		if(treeNode._depth == virtualDepth && treeNode.description != 'virtual'){
+			treeNode.pattern_index = virtualNode.linear_index;
+			
+			if(treeNode.continuous_repeat_time == treeNode.maximum_continuous_repeat_group_size){
+				defaultDepth = 10;
+			}
+		}
+		if(treeNode.description == 'virtual'){
+			if(treeNode._father != undefined){
+				if(treeNode._father.description == 'virtual'){
+					treeNode.pattern_index = treeNode._father.children[0].linear_index;
+				}
+			}
+		}
+	}
+}
+/*
+* @function: addMinIndex 在unionTree的父亲节点中增加一个数组，对应的是这个父亲节点的第一个存在的孩子节点的index值
+* @parameter: unionLinearTree
+*/
+function addMinIndex(linear_tree){
+	var linearTree = linear_tree;
+	for(var i = 0;i < linearTree.length;i++){
+		var minIndexArray = [];
+		var children = linearTree[i].children;
+		var treesValues = linearTree[i].trees_values;
+		for(var j = 1;j < treesValues.length;j++){
+			minIndexArray[j] = 'none';
+			if(children != undefined){
+				for(var k = 0;k < children.length;k++){
+					if(children[k].trees_values[j] != 'none' && children[k].description != 'virtual'){
+						minIndexArray[j] = children[k].linear_index;
+						k = children.length;
+					}
+				}
+			}
+		}
+		linearTree[i].min_index_array = minIndexArray;
+	}
+}

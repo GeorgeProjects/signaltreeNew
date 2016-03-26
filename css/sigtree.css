@@ -149,7 +149,6 @@ path[class~=half-highlight], circle[class~=half-highlight], rect[class~=half-hig
 path[class~=focus-highlight], circle[class~=focus-highlight], rect[class~=focus-highlight], g[class~=focus-highlight] > circle {
   fill: #ff5858 !important;
   stroke: #ff5858 !important;
-
 /*  opacity: 0.8;*/
   animation-name: highlight-animation;
   animation-duration:1s;
@@ -238,7 +237,8 @@ path[class~=focus-highlight], circle[class~=focus-highlight], rect[class~=focus-
 #show-right{
   text-align: center;
   position:absolute;
-  background-color: rgb(240,240,240);
+  background:white;
+  border:1px solid #a0a0a0;
   bottom:0;
   right:0;
   width:20px;
@@ -273,7 +273,8 @@ path[class~=focus-highlight], circle[class~=focus-highlight], rect[class~=focus-
 #clientsDashboard{
   height: 100px;
   width:100%;
-  background:rgb(240,240,240);
+  background:white;
+  border:1px solid #a0a0a0;
 }
 #clientsDropDown #clientsDashboard {
   /*display: none;*/
@@ -301,6 +302,14 @@ path[class~=focus-highlight], circle[class~=focus-highlight], rect[class~=focus-
   display: inline-block;
   vertical-align: middle;
 }
-.dim{
-  opacity: 0.1;
+.level-btn{
+  position: relative;
+  top: 50%;
+  transform: translateY(-50%);
 }
+#state-change{
+  position: relative;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
